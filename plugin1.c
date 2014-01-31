@@ -5,12 +5,12 @@ void create_plugin() {
 	printf("create_plugin called\n");
 }
 
-static struct DerpPlugin plugin = {
+static DerpPlugin plugin = {
 	"Test",
 	create_plugin
 };
 
-struct DerpPlugin* derp_init_plugin(void) {
+DerpPlugin* derp_init_plugin(void) {
 	return &plugin;
 }
 

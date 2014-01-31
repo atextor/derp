@@ -1,10 +1,22 @@
-#ifndef __DERP_H
-#define __DERP_H
+#ifndef _DERP_H_
+#define _DERP_H_
 
-struct DerpPlugin {
+#include <glib.h>
+#include <stdbool.h>
+
+struct _DerpPlugin {
 	char* name;
 	void (*create_plugin)(void);
 };
+
+typedef struct _DerpPlugin DerpPlugin;
+
+bool derp_assert_fact(char* fact);
+bool derp_register_rule();
+GSList* derp_get_facts();
+GSList* derp_get_rules();
+GSList* derp_get_rule_definition(char* rulename);
+
 
 /*struct DerpPlugin* derp_init_plugin(void);*/
 
@@ -28,8 +40,8 @@ typedef struct _GkrellmMonitor
 
         gint            insert_before_id;               // If plugin, insert before this mon
 
-        void            *handle;                                // If monitor is a plugin. 
-        gchar           *path;                                  //      " 
+        void            *handle;                                // If monitor is a plugin.
+        gchar           *path;                                  //      "
         }
         GkrellmMonitor;
 */
