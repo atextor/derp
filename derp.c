@@ -9,6 +9,12 @@
 
 #define ROUTER_NAME "derp_router"
 
+
+#define ROUTER_BUFFER_SIZE 1024
+static char router_buffer[ROUTER_BUFFER_SIZE];
+static int router_buffer_filled = 0;
+static void router_buffer_clear();
+
 DerpPlugin* load_plugin(char* filename) {
 	DerpPlugin*(*derp_init_plugin)(void);
 	DerpPlugin* plugin = NULL;
@@ -60,10 +66,38 @@ bool derp_assert_fact(char* fact) {
 	return (result != NULL);
 }
 
+int derp_get_facts_size() {
+	DATA_OBJECT fact_list;
+	GetFactList(&fact_list, NULL);
+	return GetpDOLength(&fact_list);
+}
+
 GSList* derp_get_facts() {
 	GSList* list = NULL;
-	Facts(ROUTER_NAME, NULL, -1, -1, -1);
-	// TODO
+	DATA_OBJECT fact_list;
+
+	GetFactList(&fact_list, NULL);
+
+	int start = GetpDOBegin(&fact_list);
+	int end = GetpDOEnd(&fact_list);
+
+	void* multi_field_ptr = GetValue(fact_list);
+	void* fact_pointer;
+	for (int i = start; i <= end; i++) {
+		if (GetMFType(multi_field_ptr, i) != FACT_ADDRESS) {
+			fprintf(stderr, "Unexpected multi field type\n");
+			continue;
+		}
+		fact_pointer = GetMFValue(multi_field_ptr, i);
+		router_buffer_clear();
+		PPFact(fact_pointer, ROUTER_NAME, 0);
+		int len = strlen(router_buffer);
+		// TODO check
+		char* fact_string = malloc(len + 1);
+		strncpy(fact_string, router_buffer, len + 1);
+		list = g_slist_append(list, fact_string);
+	}
+
 	return list;
 }
 
@@ -77,12 +111,20 @@ GSList* derp_get_rule_definition(char* rulename) {
 	return NULL;
 }
 
+
+static void router_buffer_clear() {
+	memset(router_buffer, 0, ROUTER_BUFFER_SIZE);
+	router_buffer_filled = 0;
+}
+
 int router_query_function(char* logical_name) {
 	return strncmp(ROUTER_NAME, logical_name, strlen(ROUTER_NAME)) == 0;
 }
 
 int router_print_function(char* logical_name, char* str) {
-	printf("%s", str);
+	int len = strlen(str);
+	snprintf(router_buffer + router_buffer_filled, ROUTER_BUFFER_SIZE - len - 1, "%s", str);
+	router_buffer_filled += len;
 	return 1;
 }
 
@@ -129,8 +171,13 @@ int main() {
 
 	// Enter main program
 	printf("Initialized\n");
+
+	// Test functions
 	derp_assert_fact("(example (x 3) (y red) (z 1.5 b))");
-	derp_get_facts();
+	GSList* facts = derp_get_facts();
+	for (int i = 0; (node = g_slist_nth(facts, i)); i++) {
+		printf("Fact: %s\n", (char*)node->data);
+	}
 
 	return 0;
 }

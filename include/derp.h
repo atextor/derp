@@ -13,6 +13,7 @@ typedef struct _DerpPlugin DerpPlugin;
 
 bool derp_assert_fact(char* fact);
 bool derp_register_rule();
+int derp_get_facts_size();
 GSList* derp_get_facts();
 GSList* derp_get_rules();
 GSList* derp_get_rule_definition(char* rulename);
