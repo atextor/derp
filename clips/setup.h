@@ -275,7 +275,7 @@
 /*   style editor can be utilized on supported machines.        */
 /****************************************************************/
 
-#define  EMACS_EDITOR 1
+#define  EMACS_EDITOR 0
 
 #if GENERIC || MAC
 #undef EMACS_EDITOR                         /* Editor can't be used */
