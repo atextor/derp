@@ -3,13 +3,20 @@
 #include <dlfcn.h>
 #include <glib.h>
 #include <string.h>
+#include <assert.h>
+
+#include <sys/types.h>
+#include <signal.h>
+#include <execinfo.h>
+#include <unistd.h>
 
 #include "clips.h"
 #include "derp.h"
 
+#define BUFSIZE 256
+void* symbols[BUFSIZE];
+
 #define ROUTER_NAME "derp_router"
-
-
 #define ROUTER_BUFFER_SIZE 1024
 static char router_buffer[ROUTER_BUFFER_SIZE];
 static int router_buffer_filled = 0;
@@ -92,8 +99,8 @@ GSList* derp_get_facts() {
 		router_buffer_clear();
 		PPFact(fact_pointer, ROUTER_NAME, 0);
 		int len = strlen(router_buffer);
-		// TODO check
 		char* fact_string = malloc(len + 1);
+		assert(fact_string != NULL);
 		strncpy(fact_string, router_buffer, len + 1);
 		list = g_slist_append(list, fact_string);
 	}
@@ -102,8 +109,26 @@ GSList* derp_get_facts() {
 }
 
 GSList* derp_get_rules() {
-	// TODO
-	return NULL;
+	GSList* list = NULL;
+	DATA_OBJECT rule_list;
+
+	GetDefruleList(&rule_list, NULL);
+	printf("get rules: %ld\n", GetpDOLength(&rule_list));
+
+	int start = GetpDOBegin(&rule_list);
+	int end = GetpDOEnd(&rule_list);
+
+	void* multi_field_ptr = GetValue(rule_list);
+	void* rule_pointer;
+	for (int i = start; i <= end; i++) {
+		rule_pointer = GetMFValue(multi_field_ptr, i);
+		printf("rule pointer: %p\n", rule_pointer);
+		//char* rule_string = GetDefrulePPForm(rule_pointer);
+		char* rule_string = GetDefruleName(rule_pointer);
+		list = g_slist_append(list, rule_string);
+	}
+
+	return list;
 }
 
 GSList* derp_get_rule_definition(char* rulename) {
@@ -140,18 +165,27 @@ int router_exit_function(int exit_code) {
 	return 0;
 }
 
-int main() {
-	// Load Plugins
-	GSList* list = NULL;
-	list = g_slist_append(list, "./libplugin1.so");
-	GSList* plugins = load_plugins(list);
-
-	GSList *node;
-	DerpPlugin* p;
-	for (int i = 0; (node = g_slist_nth(plugins, i)); i++) {
-		p = (DerpPlugin*)node->data;
-		printf("Available plugin: %s\n", p->name);
+void sighandler(int signum) {
+	int numPointers;
+	switch (signum) {
+		case SIGSEGV:
+			fprintf(stderr, "\n*** Derp: Caught SIGSEGV\n");
+			fprintf(stderr, "\nBacktrace:\n");
+			numPointers = backtrace(symbols, BUFSIZE);
+			backtrace_symbols_fd(symbols, numPointers, STDERR_FILENO);
+			exit(EXIT_FAILURE);
+			break;
+		default:
+			break;
 	}
+}
+
+int main() {
+	// Install signal handler
+	struct sigaction sa;
+	sa.sa_handler = sighandler;
+	sa.sa_flags = 0;
+	sigaction(SIGSEGV, &sa, NULL);
 
 	// Initialize rule engine
 	InitializeEnvironment();
@@ -169,15 +203,30 @@ int main() {
 		exit(EXIT_FAILURE);
 	}
 
+	// Load Plugins
+	GSList* list = NULL;
+	list = g_slist_append(list, "./libplugin1.so");
+	GSList* plugins = load_plugins(list);
+
+	GSList *node;
+	DerpPlugin* p;
+	for (int i = 0; (node = g_slist_nth(plugins, i)); i++) {
+		p = (DerpPlugin*)node->data;
+		printf("Creating plugin: %s\n", p->name);
+		p->create_plugin();
+	}
+
 	// Enter main program
 	printf("Initialized\n");
 
+	/*
 	// Test functions
 	derp_assert_fact("(example (x 3) (y red) (z 1.5 b))");
 	GSList* facts = derp_get_facts();
 	for (int i = 0; (node = g_slist_nth(facts, i)); i++) {
 		printf("Fact: %s\n", (char*)node->data);
 	}
+	*/
 
 	return 0;
 }
