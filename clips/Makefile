@@ -1,7 +1,7 @@
 GCC=gcc
 OBJS=$(patsubst %.c, %.o, $(wildcard *.c))
 OBJSEXCEPTMAIN=$(filter-out main.o, $(OBJS))
-CFLAGS=-Wall -Wundef -Wpointer-arith -Wshadow -Wcast-qual -Wcast-align -Winline -Wmissing-declarations -Wredundant-decls -Wmissing-prototypes -Wnested-externs -Wstrict-prototypes -Waggregate-return -Wno-implicit 
+CFLAGS=-fvisibility=hidden -Wall -Wundef -Wpointer-arith -Wshadow -Wcast-qual -Wcast-align -Winline -Wmissing-declarations -Wredundant-decls -Wmissing-prototypes -Wnested-externs -Wstrict-prototypes -Waggregate-return -Wno-implicit 
 LDFLAGS=-lm -ltermcap
 BIN=clips
 LIB=libclips.a

@@ -16,6 +16,9 @@ $(PROG): $(MODS) $(CLIPSLIB)
 libplugin1.so: plugin1.o
 	gcc -shared -g -o libplugin1.so plugin1.o
 
+$(PROG).o: $(PROG).c
+	gcc $(CFLAGS) -fvisibility=hidden -o $@ $<
+
 %.o: %.c
 	gcc $(CFLAGS) -o $@ $<
 

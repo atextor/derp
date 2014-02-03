@@ -68,18 +68,18 @@ GSList* load_plugins(GSList* plugins) {
 	return result;
 }
 
-bool derp_assert_fact(char* fact) {
+EXPORT bool derp_assert_fact(char* fact) {
 	void* result = AssertString(fact);
 	return (result != NULL);
 }
 
-int derp_get_facts_size() {
+EXPORT int derp_get_facts_size() {
 	DATA_OBJECT fact_list;
 	GetFactList(&fact_list, NULL);
 	return GetpDOLength(&fact_list);
 }
 
-GSList* derp_get_facts() {
+EXPORT GSList* derp_get_facts() {
 	GSList* list = NULL;
 	DATA_OBJECT fact_list;
 
@@ -108,7 +108,7 @@ GSList* derp_get_facts() {
 	return list;
 }
 
-GSList* derp_get_rules() {
+EXPORT GSList* derp_get_rules() {
 	GSList* list = NULL;
 	DATA_OBJECT rule_list;
 
@@ -131,7 +131,7 @@ GSList* derp_get_rules() {
 	return list;
 }
 
-GSList* derp_get_rule_definition(char* rulename) {
+EXPORT GSList* derp_get_rule_definition(char* rulename) {
 	// TODO
 	return NULL;
 }
