@@ -22,6 +22,30 @@ static char router_buffer[ROUTER_BUFFER_SIZE];
 static int router_buffer_filled = 0;
 static void router_buffer_clear();
 
+EXPORT void derp_log(derp_log_level level, char* fmt, ...) {
+	switch(level) {
+		case DERP_LOG_WARNING:
+			printf("WARN: ");
+			break;
+		case DERP_LOG_ERROR:
+			printf("ERROR: ");
+			break;
+		case DERP_LOG_INFO:
+			printf("INFO: ");
+			break;
+		case DERP_LOG_DEBUG:
+			printf("DEBUG: ");
+			break;
+	}
+
+	va_list argptr;
+	va_start(argptr, fmt);
+	vfprintf(stdout, fmt, argptr);
+	va_end(argptr);
+	putchar('\n');
+}
+
+
 DerpPlugin* load_plugin(char* filename) {
 	DerpPlugin*(*derp_init_plugin)(void);
 	DerpPlugin* plugin = NULL;
@@ -30,7 +54,7 @@ DerpPlugin* load_plugin(char* filename) {
 
 	handle = dlopen(filename, RTLD_LAZY);
 	if (!handle) {
-		fprintf(stderr, "%s\n", dlerror());
+		derp_log(DERP_LOG_ERROR, "%s", dlerror());
 		return NULL;
 	}
 
@@ -39,13 +63,13 @@ DerpPlugin* load_plugin(char* filename) {
 	derp_init_plugin = (DerpPlugin*(*)(void))dlsym(handle, "derp_init_plugin");
 	error = dlerror();
 	if (error != NULL) {
-		fprintf(stderr, "Error while loading plugin %s: %s\n", filename, error);
+		derp_log(DERP_LOG_ERROR, "Error while loading plugin %s: %s", filename, error);
 		return NULL;
 	}
 
 	plugin = derp_init_plugin();
 	if (plugin == NULL) {
-		fprintf(stderr, "Error while loading plugin %s: Invalid plugin struct\n", filename);
+		derp_log(DERP_LOG_ERROR, "Error while loading plugin %s: Invalid plugin struct", filename);
 	}
 
 	return plugin;
@@ -68,7 +92,7 @@ GSList* load_plugins(GSList* plugins) {
 	return result;
 }
 
-EXPORT bool derp_assert_fact(char* fact) {
+EXPORT gboolean derp_assert_fact(char* fact) {
 	void* result = AssertString(fact);
 	return (result != NULL);
 }
@@ -92,7 +116,7 @@ EXPORT GSList* derp_get_facts() {
 	void* fact_pointer;
 	for (int i = start; i <= end; i++) {
 		if (GetMFType(multi_field_ptr, i) != FACT_ADDRESS) {
-			fprintf(stderr, "Unexpected multi field type\n");
+			derp_log(DERP_LOG_WARNING, "Unexpected multi field type");
 			continue;
 		}
 		fact_pointer = GetMFValue(multi_field_ptr, i);
@@ -113,7 +137,6 @@ EXPORT GSList* derp_get_rules() {
 	DATA_OBJECT rule_list;
 
 	GetDefruleList(&rule_list, NULL);
-	printf("get rules: %ld\n", GetpDOLength(&rule_list));
 
 	int start = GetpDOBegin(&rule_list);
 	int end = GetpDOEnd(&rule_list);
@@ -122,8 +145,6 @@ EXPORT GSList* derp_get_rules() {
 	void* rule_pointer;
 	for (int i = start; i <= end; i++) {
 		rule_pointer = GetMFValue(multi_field_ptr, i);
-		printf("rule pointer: %p\n", rule_pointer);
-		//char* rule_string = GetDefrulePPForm(rule_pointer);
 		char* rule_string = GetDefruleName(rule_pointer);
 		list = g_slist_append(list, rule_string);
 	}
@@ -199,25 +220,25 @@ int main() {
 			router_ungetc_function,
 			router_exit_function);
 	if (result == 0) {
-		fprintf(stderr, "I/O Router %s could not be created\n", ROUTER_NAME);
+		derp_log(DERP_LOG_ERROR, "I/O Router %s could not be created", ROUTER_NAME);
 		exit(EXIT_FAILURE);
 	}
 
 	// Load Plugins
 	GSList* list = NULL;
 	list = g_slist_append(list, "./libplugin1.so");
+	list = g_slist_append(list, "./libraptor.so");
 	GSList* plugins = load_plugins(list);
 
-	GSList *node;
 	DerpPlugin* p;
-	for (int i = 0; (node = g_slist_nth(plugins, i)); i++) {
+	for (GSList* node = plugins; node; node = node->next) {
 		p = (DerpPlugin*)node->data;
-		printf("Creating plugin: %s\n", p->name);
+		derp_log(DERP_LOG_DEBUG, "Creating plugin: %s", p->name);
 		p->create_plugin();
 	}
 
 	// Enter main program
-	printf("Initialized\n");
+	derp_log(DERP_LOG_DEBUG, "Initialized");
 
 	/*
 	// Test functions

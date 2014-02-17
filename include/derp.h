@@ -2,7 +2,6 @@
 #define _DERP_H_
 
 #include <glib.h>
-#include <stdbool.h>
 
 #if defined _WIN32 || defined __CYGWIN__
   #define EXPORT __declspec(dllexport)
@@ -14,6 +13,13 @@
   #endif
 #endif
 
+typedef enum {
+	DERP_LOG_WARNING,
+	DERP_LOG_ERROR,
+	DERP_LOG_INFO,
+	DERP_LOG_DEBUG
+} derp_log_level;
+
 struct _DerpPlugin {
 	char* name;
 	void (*create_plugin)(void);
@@ -21,12 +27,12 @@ struct _DerpPlugin {
 
 typedef struct _DerpPlugin DerpPlugin;
 
-bool derp_assert_fact(char* fact);
-bool derp_register_rule();
+gboolean derp_assert_fact(char* fact);
 int derp_get_facts_size();
 GSList* derp_get_facts();
 GSList* derp_get_rules();
 GSList* derp_get_rule_definition(char* rulename);
+void derp_log(derp_log_level level, char* fmt, ...);
 
 
 /*struct DerpPlugin* derp_init_plugin(void);*/

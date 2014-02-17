@@ -4,7 +4,7 @@
 
 void create_plugin() {
 	// Assert fact
-	derp_assert_fact("(example (x 3) (y red) (z 1.5 b))");
+	//derp_assert_fact("(example (x 3) (y red) (z 1.5 b))");
 
 	// Check for fact
 	GSList* facts = derp_get_facts();
