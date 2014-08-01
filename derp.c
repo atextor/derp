@@ -21,6 +21,7 @@ void* symbols[BUFSIZE];
 static char router_buffer[ROUTER_BUFFER_SIZE];
 static int router_buffer_filled = 0;
 static void router_buffer_clear();
+static void *theEnv;
 
 EXPORT void derp_log(derp_log_level level, char* fmt, ...) {
 	switch(level) {
@@ -75,9 +76,9 @@ DerpPlugin* load_plugin(char* filename) {
 	return plugin;
 }
 
-GSList* load_plugins(GSList* plugins) {
-	GSList* node;
-	GSList* result = NULL;
+GSList_DerpPlugin* load_plugins(GSList_String* plugins) {
+	GSList_String* node;
+	GSList_DerpPlugin* result = NULL;
 	char* plugin_filename;
 	DerpPlugin* plugin = NULL;
 
@@ -92,10 +93,26 @@ GSList* load_plugins(GSList* plugins) {
 	return result;
 }
 
+EXPORT gboolean derp_assert_generic(char* input) {
+	return RouteCommand(theEnv, input, FALSE);
+}
+
+
 EXPORT gboolean derp_assert_fact(char* fact) {
 	void* result = AssertString(fact);
 	return (result != NULL);
 }
+
+EXPORT gboolean derp_assert_triple(char* subject, char* predicate, char* object) {
+	// TODO make reentrant
+	static char buf[2048];
+	int result = snprintf(buf, 2048, "(triple (subj %s) (pred %s) (obj %s))", subject, predicate, object);
+	if (result >= 2048 || result < 0) {
+		return FALSE;
+	}
+	return derp_assert_fact(buf);
+}
+
 
 EXPORT int derp_get_facts_size() {
 	DATA_OBJECT fact_list;
@@ -103,8 +120,8 @@ EXPORT int derp_get_facts_size() {
 	return GetpDOLength(&fact_list);
 }
 
-EXPORT GSList* derp_get_facts() {
-	GSList* list = NULL;
+EXPORT GSList_String* derp_get_facts() {
+	GSList_String* list = NULL;
 	DATA_OBJECT fact_list;
 
 	GetFactList(&fact_list, NULL);
@@ -132,8 +149,8 @@ EXPORT GSList* derp_get_facts() {
 	return list;
 }
 
-EXPORT GSList* derp_get_rules() {
-	GSList* list = NULL;
+EXPORT GSList_String* derp_get_rules() {
+	GSList_String* list = NULL;
 	DATA_OBJECT rule_list;
 
 	GetDefruleList(&rule_list, NULL);
@@ -144,19 +161,69 @@ EXPORT GSList* derp_get_rules() {
 	void* multi_field_ptr = GetValue(rule_list);
 	void* rule_pointer;
 	for (int i = start; i <= end; i++) {
+		// Get rule symbol
 		rule_pointer = GetMFValue(multi_field_ptr, i);
-		char* rule_string = GetDefruleName(rule_pointer);
+		char* rule_name = ValueToString(rule_pointer);
+		char* new_rule_pointer = FindDefrule(rule_name);
+		char* rule_string = GetDefrulePPForm(new_rule_pointer);
 		list = g_slist_append(list, rule_string);
 	}
 
 	return list;
 }
 
-EXPORT GSList* derp_get_rule_definition(char* rulename) {
+EXPORT GSList_String* derp_get_rule_definition(char* rulename) {
 	// TODO
 	return NULL;
 }
 
+EXPORT gboolean derp_add_rule(char* name, GSList_DerpTriple* head, GSList_DerpTriple* body) {
+	// TODO make reentrant
+	GSList_String* assertion = NULL;
+	GSList_String* assertion_head = NULL;
+
+	DerpTriple* triple;
+
+	assertion = g_slist_append(assertion, "(defrule ");
+	assertion_head = assertion;
+	assertion = g_slist_append(assertion, name);
+	assertion = g_slist_append(assertion, " ");
+
+	for (GSList_DerpTriple* h = head; h; h = h->next) {
+		triple = (DerpTriple*)h->data;
+		assertion = g_slist_append(assertion, "(triple (subj ");
+		assertion = g_slist_append(assertion, triple->subject);
+		assertion = g_slist_append(assertion, ") (pred ");
+		assertion = g_slist_append(assertion, triple->predicate);
+		assertion = g_slist_append(assertion, ") (obj ");
+		assertion = g_slist_append(assertion, triple->object);
+		assertion = g_slist_append(assertion, "))");
+	}
+
+	assertion = g_slist_append(assertion, " => (assert ");
+
+	for (GSList_DerpTriple* h = body; h; h = h->next) {
+		triple = (DerpTriple*)h->data;
+		assertion = g_slist_append(assertion, "(triple (subj ");
+		assertion = g_slist_append(assertion, triple->subject);
+		assertion = g_slist_append(assertion, ") (pred ");
+		assertion = g_slist_append(assertion, triple->predicate);
+		assertion = g_slist_append(assertion, ") (obj ");
+		assertion = g_slist_append(assertion, triple->object);
+		assertion = g_slist_append(assertion, "))");
+	}
+
+	assertion = g_slist_append(assertion, "))");
+
+	// TODO make reentrant
+	static char buf[2048];
+	memset(buf, '\0', 2048);
+	for (GSList_String* node = assertion_head; node; node = node->next) {
+		strcat(buf, (char*)node->data);
+	}
+	derp_log(DERP_LOG_DEBUG, "Asserting: %s", buf);
+	return derp_assert_generic(buf);
+}
 
 static void router_buffer_clear() {
 	memset(router_buffer, 0, ROUTER_BUFFER_SIZE);
@@ -209,7 +276,7 @@ int main() {
 	sigaction(SIGSEGV, &sa, NULL);
 
 	// Initialize rule engine
-	InitializeEnvironment();
+	theEnv = CreateEnvironment();
 	Load("init.clp");
 
 	// Add I/O routers
@@ -225,13 +292,13 @@ int main() {
 	}
 
 	// Load Plugins
-	GSList* list = NULL;
+	GSList_String* list = NULL;
 	list = g_slist_append(list, "./libplugin1.so");
 	list = g_slist_append(list, "./libraptor.so");
-	GSList* plugins = load_plugins(list);
+	GSList_DerpPlugin* plugins = load_plugins(list);
 
 	DerpPlugin* p;
-	for (GSList* node = plugins; node; node = node->next) {
+	for (GSList_DerpPlugin* node = plugins; node; node = node->next) {
 		p = (DerpPlugin*)node->data;
 		derp_log(DERP_LOG_DEBUG, "Creating plugin: %s", p->name);
 		p->create_plugin();
@@ -240,14 +307,16 @@ int main() {
 	// Enter main program
 	derp_log(DERP_LOG_DEBUG, "Initialized");
 
-	/*
 	// Test functions
+	/*
 	derp_assert_fact("(example (x 3) (y red) (z 1.5 b))");
-	GSList* facts = derp_get_facts();
-	for (int i = 0; (node = g_slist_nth(facts, i)); i++) {
-		printf("Fact: %s\n", (char*)node->data);
-	}
 	*/
+
+	derp_assert_generic("(run)");
+
+	for (GSList_String* node = derp_get_facts(); node; node = node->next) {
+		printf("Fact:\n%s\n", (char*)node->data);
+	}
 
 	return 0;
 }

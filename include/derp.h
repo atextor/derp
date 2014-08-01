@@ -27,42 +27,27 @@ struct _DerpPlugin {
 
 typedef struct _DerpPlugin DerpPlugin;
 
+struct _DerpTriple {
+	char* subject;
+	char* predicate;
+	char* object;
+};
+
+typedef struct _DerpTriple DerpTriple;
+
+typedef GSList GSList_DerpPlugin;
+typedef GSList GSList_String;
+typedef GSList GSList_DerpTriple;
+
 gboolean derp_assert_fact(char* fact);
+gboolean derp_assert_generic(char* input);
+gboolean derp_assert_triple(char* subject, char* predicate, char* object);
+gboolean derp_add_rule(char* name, GSList_DerpTriple* head, GSList_DerpTriple* body);
 int derp_get_facts_size();
-GSList* derp_get_facts();
-GSList* derp_get_rules();
-GSList* derp_get_rule_definition(char* rulename);
+GSList_String* derp_get_facts();
+GSList_String* derp_get_rules();
+GSList_String* derp_get_rule_definition(char* rulename);
 void derp_log(derp_log_level level, char* fmt, ...);
-
-
-/*struct DerpPlugin* derp_init_plugin(void);*/
-
-/*
-typedef struct _GkrellmMonitor
-        {
-        gchar           *name;
-        gint            id;
-        void            (*create_monitor)(GtkWidget *, gint);
-        void            (*update_monitor)(void);
-        void            (*create_config)(GtkWidget *);
-        void            (*apply_config)(void);
-
-        void            (*save_user_config)(FILE *);
-        void            (*load_user_config)(gchar *);
-        gchar           *config_keyword;
-
-        void            (*undef2)(void);
-        void            (*undef1)(void);
-        GkrellmMonprivate *privat;
-
-        gint            insert_before_id;               // If plugin, insert before this mon
-
-        void            *handle;                                // If monitor is a plugin.
-        gchar           *path;                                  //      "
-        }
-        GkrellmMonitor;
-*/
-
 
 #endif
 

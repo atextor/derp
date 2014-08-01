@@ -66,13 +66,10 @@ static char* term_to_readable(raptor_term* term) {
 }
 
 static void handle_triple(void* user_data, raptor_statement* triple) {
-	static char buf[2048];
-	snprintf(buf, 2048, "(triple (subj %s) (pred %s) (obj %s))",
-			term_to_readable(triple->subject),
-			term_to_readable(triple->predicate),
-			term_to_readable(triple->object));
-
-	derp_assert_fact(buf);
+	char* subject = term_to_readable(triple->subject);
+	char* predicate = term_to_readable(triple->predicate);
+	char* object = term_to_readable(triple->object);
+	derp_assert_triple(subject, predicate, object);
 }
 
 static void free_data(gpointer data) {
@@ -91,10 +88,11 @@ void create_plugin() {
 	g_hash_table_insert(prefix_map, strdup("http://www.w3.org/2000/01/rdf-schema#"), strdup("rdfs"));
 
 	// Load rdf file
-	raptor_world *world = NULL;
+	raptor_world* world = NULL;
 	raptor_parser* rdf_parser = NULL;
-	unsigned char *uri_string;
-	raptor_uri *uri, *base_uri;
+	unsigned char* uri_string;
+	raptor_uri* uri;
+	raptor_uri* base_uri;
 
 	world = raptor_new_world();
 
