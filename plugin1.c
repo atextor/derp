@@ -5,15 +5,11 @@
 #include "derp.h"
 
 void start_plugin() {
-	// Assert fact
-	derp_assert_rule(
-			derp_new_rule(
-				// Name
-				g_string_new("foo"),
-				// Head
-				derp_new_triple_list(derp_new_triple("dc:NLM", "dc:modified", "\"2008-01-14\""), NULL),
-				// Body
-				derp_new_triple_list(derp_new_triple("FOO", "FOO", "FOO"), NULL)));
+	// Add rule
+	ADD_RULE("foo",
+		IF( T("dc:NLM", "dc:modified", "\"2008-01-14\"") ),
+		THEN ( T("FOO", "FOO", "FOO"),
+			   T("BAR", "BAR", "BAR") ));
 
 	// Check for fact
 	GSList_String* facts = derp_get_facts();
