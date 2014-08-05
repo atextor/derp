@@ -4,38 +4,16 @@
 #include <glib.h>
 #include "derp.h"
 
-static DerpTriple* derp_triple(char* subject, char* predicate, char* object) {
-	DerpTriple* t = malloc(sizeof(DerpTriple));
-	t->subject = strdup(subject);
-	t->predicate = strdup(predicate);
-	t->object = strdup(object);
-	return t;
-}
-
-static void delete_triple(DerpTriple* t) {
-	free(t->subject);
-	free(t->predicate);
-	free(t->object);
-	free(t);
-}
-
 void start_plugin() {
 	// Assert fact
-	GSList_DerpTriple* head = NULL;
-	DerpTriple* h1 = derp_triple("dc:NLM", "dc:modified", "\"2008-01-14\"");
-	head = g_slist_append(head, h1);
-
-	GSList_DerpTriple* body = NULL;
-	DerpTriple* b1 = derp_triple("FOO", "FOO", "FOO");
-	body = g_slist_append(body, b1);
-
-	GString* name = g_string_new("foo");
-	derp_add_rule(name, head, body);
-	g_string_free(name, TRUE);
-	delete_triple(h1);
-	delete_triple(b1);
-	g_slist_free(head);
-	g_slist_free(body);
+	derp_assert_rule(
+			derp_new_rule(
+				// Name
+				g_string_new("foo"),
+				// Head
+				derp_new_triple_list(derp_new_triple("dc:NLM", "dc:modified", "\"2008-01-14\""), NULL),
+				// Body
+				derp_new_triple_list(derp_new_triple("FOO", "FOO", "FOO"), NULL)));
 
 	// Check for fact
 	GSList_String* facts = derp_get_facts();

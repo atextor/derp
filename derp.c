@@ -182,27 +182,88 @@ EXPORT GSList_String* derp_get_rule_definition(GString* rulename) {
 	return NULL;
 }
 
-EXPORT gboolean derp_add_rule(GString* name, GSList_DerpTriple* head, GSList_DerpTriple* body) {
+EXPORT gboolean derp_assert_rule(DerpRule* rule) {
+	if (g_slist_length(rule->head) == 0 ||
+			g_slist_length(rule->body) == 0 ||
+			rule->name == NULL) {
+		return FALSE;
+	}
+
 	GString* rule_assertion = g_string_sized_new(256);
-	g_string_append_printf(rule_assertion, "(defrule %s ", name->str);
+	g_string_append_printf(rule_assertion, "(defrule %s ", rule->name->str);
 	DerpTriple* triple;
-	for (GSList_DerpTriple* h = head; h; h = h->next) {
+	for (GSList_DerpTriple* h = rule->head; h; h = h->next) {
 		triple = (DerpTriple*)h->data;
 		g_string_append_printf(rule_assertion, "(triple (subj %s) (pred %s) (obj %s))",
 				triple->subject, triple->predicate, triple->object);
 	}
 	g_string_append(rule_assertion, " => (assert ");
-	for (GSList_DerpTriple* h = body; h; h = h->next) {
+	for (GSList_DerpTriple* h = rule->body; h; h = h->next) {
 		triple = (DerpTriple*)h->data;
 		g_string_append_printf(rule_assertion, "(triple (subj %s) (pred %s) (obj %s))",
 				triple->subject, triple->predicate, triple->object);
 	}
 	g_string_append(rule_assertion, "))");
 
-	printf("Assertion: %s\n", rule_assertion->str);
 	int result = derp_assert_generic(rule_assertion);
 	g_string_free(rule_assertion, TRUE);
+
+	derp_delete_rule(rule);
 	return result;
+}
+
+EXPORT DerpTriple* derp_new_triple(gchar* subject, gchar* predicate, gchar* object) {
+	DerpTriple* t = malloc(sizeof(DerpTriple));
+	t->subject = strdup(subject);
+	t->predicate = strdup(predicate);
+	t->object = strdup(object);
+	return t;
+}
+
+EXPORT void derp_delete_triple(DerpTriple* t) {
+	free(t->subject);
+	free(t->predicate);
+	free(t->object);
+	free(t);
+}
+
+EXPORT GSList_DerpTriple* derp_new_triple_list(DerpTriple* triple, ...) {
+	GSList_DerpTriple* list = NULL;
+	GSList_DerpTriple* listptr = NULL;
+	list = g_slist_append(list, triple);
+	listptr = list;
+
+	va_list ap;
+	va_start(ap, triple);
+	DerpTriple* t = NULL;
+	while(TRUE) {
+		t = va_arg(ap, DerpTriple*);
+		if (t == NULL) {
+			break;
+		}
+		listptr = g_slist_append(listptr, t);
+	};
+	va_end(ap);
+	return list;
+}
+
+EXPORT void derp_delete_triple_list(GSList_DerpTriple* list) {
+	g_slist_free_full(list, (GDestroyNotify)derp_delete_triple);
+}
+
+EXPORT DerpRule* derp_new_rule(GString* name, GSList_DerpTriple* head, GSList_DerpTriple* body) {
+	DerpRule* rule = malloc(sizeof(DerpRule));
+	rule->name = name;
+	rule->head = head;
+	rule->body = body;
+	return rule;
+}
+
+EXPORT void derp_delete_rule(DerpRule* rule) {
+	g_string_free(rule->name, TRUE);
+	derp_delete_triple_list(rule->head);
+	derp_delete_triple_list(rule->body);
+	free(rule);
 }
 
 static void router_buffer_clear() {
