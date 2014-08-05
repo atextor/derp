@@ -41,14 +41,14 @@ typedef GSList GSList_String;
 typedef GSList GSList_DerpTriple;
 
 void derp_free_data(gpointer data);
-gboolean derp_assert_fact(char* fact);
-gboolean derp_assert_generic(char* input);
-gboolean derp_assert_triple(char* subject, char* predicate, char* object);
-gboolean derp_add_rule(char* name, GSList_DerpTriple* head, GSList_DerpTriple* body);
+gboolean derp_assert_fact(GString* fact);
+gboolean derp_assert_generic(GString* input);
+gboolean derp_assert_triple(GString* subject, GString* predicate, GString* object);
+gboolean derp_add_rule(GString* name, GSList_DerpTriple* head, GSList_DerpTriple* body);
 int derp_get_facts_size();
 GSList_String* derp_get_facts();
 GSList_String* derp_get_rules();
-GSList_String* derp_get_rule_definition(char* rulename);
+GSList_String* derp_get_rule_definition(GString* rulename);
 void derp_log(derp_log_level level, char* fmt, ...);
 
 #endif

@@ -29,7 +29,9 @@ void start_plugin() {
 	DerpTriple* b1 = derp_triple("FOO", "FOO", "FOO");
 	body = g_slist_append(body, b1);
 
-	derp_add_rule("foo", head, body);
+	GString* name = g_string_new("foo");
+	derp_add_rule(name, head, body);
+	g_string_free(name, TRUE);
 	delete_triple(h1);
 	delete_triple(b1);
 	g_slist_free(head);
@@ -51,14 +53,10 @@ void start_plugin() {
 	g_slist_free(rules);
 }
 
-void shutdown_plugin() {
-	printf("Shutting down p1\n");
-}
-
 static DerpPlugin plugin = {
 	"Test",
 	start_plugin,
-	shutdown_plugin
+	NULL
 };
 
 DerpPlugin* derp_init_plugin(void) {

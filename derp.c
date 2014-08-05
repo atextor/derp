@@ -52,10 +52,10 @@ EXPORT void derp_log(derp_log_level level, char* fmt, ...) {
 	putchar('\n');
 }
 
-DerpPlugin* load_plugin(char* filename) {
+DerpPlugin* load_plugin(gchar* filename) {
 	DerpPlugin*(*derp_init_plugin)(void);
 	DerpPlugin* plugin = NULL;
-	char* error = NULL;
+	gchar* error = NULL;
 	void* handle;
 
 	handle = dlopen(filename, RTLD_LAZY);
@@ -83,11 +83,11 @@ DerpPlugin* load_plugin(char* filename) {
 
 GSList_DerpPlugin* load_plugins(GSList_String* plugins) {
 	GSList_DerpPlugin* result = NULL;
-	char* plugin_filename;
+	gchar* plugin_filename;
 	DerpPlugin* plugin = NULL;
 
 	for (GSList_String* node = plugins; node; node = node->next) {
-		plugin_filename = (char*)node->data;
+		plugin_filename = (gchar*)node->data;
 		plugin = load_plugin(plugin_filename);
 		if (plugin != NULL) {
 			result = g_slist_append(result, plugin);
@@ -97,27 +97,23 @@ GSList_DerpPlugin* load_plugins(GSList_String* plugins) {
 	return result;
 }
 
-EXPORT gboolean derp_assert_generic(char* input) {
-	return RouteCommand(theEnv, input, FALSE);
+EXPORT gboolean derp_assert_generic(GString* input) {
+	return RouteCommand(theEnv, input->str, FALSE);
 }
 
-EXPORT gboolean derp_assert_fact(char* fact) {
-	void* result = AssertString(fact);
+EXPORT gboolean derp_assert_fact(GString* fact) {
+	void* result = AssertString(fact->str);
 	return (result != NULL);
 }
 
-EXPORT gboolean derp_assert_triple(char* subject, char* predicate, char* object) {
-	int size = strlen(subject) + strlen(predicate) + strlen(object) + 50;
-	char* buf = malloc(size);
-	int result = snprintf(buf, size, "(triple (subj %s) (pred %s) (obj %s))", subject, predicate, object);
-	if (result >= size || result < 0) {
-		return FALSE;
-	}
-	result = derp_assert_fact(buf);
-	free(buf);
+EXPORT gboolean derp_assert_triple(GString* subject, GString* predicate, GString* object) {
+	GString* fact = g_string_sized_new(100);
+	g_string_append_printf(fact, "(triple (subj %s) (pred %s) (obj %s))",
+			subject->str, predicate->str, object->str);
+	int result = derp_assert_fact(fact);
+	g_string_free(fact, TRUE);
 	return result;
 }
-
 
 EXPORT int derp_get_facts_size() {
 	DATA_OBJECT fact_list;
@@ -181,14 +177,14 @@ EXPORT GSList_String* derp_get_rules() {
 	return list;
 }
 
-EXPORT GSList_String* derp_get_rule_definition(char* rulename) {
+EXPORT GSList_String* derp_get_rule_definition(GString* rulename) {
 	// TODO
 	return NULL;
 }
 
-EXPORT gboolean derp_add_rule(char* name, GSList_DerpTriple* head, GSList_DerpTriple* body) {
+EXPORT gboolean derp_add_rule(GString* name, GSList_DerpTriple* head, GSList_DerpTriple* body) {
 	GString* rule_assertion = g_string_sized_new(256);
-	g_string_append_printf(rule_assertion, "(defrule %s ", name);
+	g_string_append_printf(rule_assertion, "(defrule %s ", name->str);
 	DerpTriple* triple;
 	for (GSList_DerpTriple* h = head; h; h = h->next) {
 		triple = (DerpTriple*)h->data;
@@ -204,7 +200,7 @@ EXPORT gboolean derp_add_rule(char* name, GSList_DerpTriple* head, GSList_DerpTr
 	g_string_append(rule_assertion, "))");
 
 	printf("Assertion: %s\n", rule_assertion->str);
-	int result = derp_assert_generic(rule_assertion->str);
+	int result = derp_assert_generic(rule_assertion);
 	g_string_free(rule_assertion, TRUE);
 	return result;
 }
@@ -325,14 +321,17 @@ int main() {
 	derp_assert_fact("(example (x 3) (y red) (z 1.5 b))");
 	*/
 
-	derp_assert_generic("(run)");
+	GString* run = g_string_new("(run)");
+	derp_assert_generic(run);
+	g_string_free(run, TRUE);
 
+	/*
 	GSList_String* facts = derp_get_facts();
 	for (GSList_String* node = facts; node; node = node->next) {
 		printf("Fact:\n%s\n", (char*)node->data);
 	}
 	g_slist_free_full(facts, derp_free_data);
-
+	*/
 
 	shutdown();
 	return 0;
