@@ -24,6 +24,7 @@ static GString* uri_to_qname(gchar* uri) {
 	GString* base_uri = g_string_sized_new(separator - uri);
 	g_string_append_printf(base_uri, "%.*s", (int)(separator - uri), uri);
 	gchar* prefix = g_hash_table_lookup(prefix_map, base_uri->str);
+	g_string_free(base_uri, TRUE);
 
 	gchar* suffix = separator + 1;
 	if (prefix != NULL && strlen(suffix) > 0) {
@@ -32,23 +33,21 @@ static GString* uri_to_qname(gchar* uri) {
 		g_string_append_printf(qname, "<%s>", uri);
 	}
 
-	g_string_free(base_uri, TRUE);
 	return qname;
 }
 
 static GString* term_to_readable(raptor_term* term) {
-	GString* readable = g_string_sized_new(1024);
+	GString* readable;
 	switch (term->type) {
-		case RAPTOR_TERM_TYPE_URI: {
-			GString* qname = uri_to_qname((char*)raptor_uri_as_string(term->value.uri));
-			g_string_append_printf(readable, "%s", qname->str);
-			g_string_free(qname, TRUE);
+		case RAPTOR_TERM_TYPE_URI:
+			readable = uri_to_qname((char*)raptor_uri_as_string(term->value.uri));
 			break;
-			}
 		case RAPTOR_TERM_TYPE_LITERAL:
+			readable = g_string_sized_new(256);
 			g_string_append_printf(readable, "\"%s\"", (char*)(term->value.literal.string));
 			break;
 		case RAPTOR_TERM_TYPE_BLANK:
+			readable = g_string_sized_new(256);
 			g_string_append_printf(readable, "%s", (char*)raptor_term_to_string(term));
 			break;
 		default:
