@@ -187,7 +187,6 @@ EXPORT GSList_String* derp_get_rule_definition(char* rulename) {
 }
 
 EXPORT gboolean derp_add_rule(char* name, GSList_DerpTriple* head, GSList_DerpTriple* body) {
-	// TODO make reentrant
 	GSList_String* assertion = NULL;
 	GSList_String* assertion_head = NULL;
 
@@ -224,15 +223,20 @@ EXPORT gboolean derp_add_rule(char* name, GSList_DerpTriple* head, GSList_DerpTr
 
 	assertion = g_slist_append(assertion, "))");
 
-	// TODO make reentrant
-	static char buf[2048];
-	memset(buf, '\0', 2048);
+	int size = 2048;
+	char* buf = malloc(size);
+	if (buf == NULL) {
+		return FALSE;
+	}
+
 	for (GSList_String* node = assertion_head; node; node = node->next) {
 		strcat(buf, (char*)node->data);
 	}
 	derp_log(DERP_LOG_DEBUG, "Asserting: %s", buf);
 	g_slist_free(assertion);
-	return derp_assert_generic(buf);
+	int result =  derp_assert_generic(buf);
+	free(buf);
+	return result;
 }
 
 static void router_buffer_clear() {
