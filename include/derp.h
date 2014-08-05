@@ -22,7 +22,8 @@ typedef enum {
 
 struct _DerpPlugin {
 	char* name;
-	void (*create_plugin)(void);
+	void (*start_plugin)(void);
+	void (*shutdown_plugin)(void);
 };
 
 typedef struct _DerpPlugin DerpPlugin;
@@ -39,6 +40,7 @@ typedef GSList GSList_DerpPlugin;
 typedef GSList GSList_String;
 typedef GSList GSList_DerpTriple;
 
+void derp_free_data(gpointer data);
 gboolean derp_assert_fact(char* fact);
 gboolean derp_assert_generic(char* input);
 gboolean derp_assert_triple(char* subject, char* predicate, char* object);

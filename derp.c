@@ -21,7 +21,13 @@ void* symbols[BUFSIZE];
 static char router_buffer[ROUTER_BUFFER_SIZE];
 static int router_buffer_filled = 0;
 static void router_buffer_clear();
-static void *theEnv;
+static void *theEnv = NULL;
+
+GSList_DerpPlugin* plugins = NULL;
+
+EXPORT void derp_free_data(gpointer data) {
+	free(data);
+}
 
 EXPORT void derp_log(derp_log_level level, char* fmt, ...) {
 	switch(level) {
@@ -77,12 +83,11 @@ DerpPlugin* load_plugin(char* filename) {
 }
 
 GSList_DerpPlugin* load_plugins(GSList_String* plugins) {
-	GSList_String* node;
 	GSList_DerpPlugin* result = NULL;
 	char* plugin_filename;
 	DerpPlugin* plugin = NULL;
 
-	for (int i = 0; (node = g_slist_nth(plugins, i)); i++) {
+	for (GSList_String* node = plugins; node; node = node->next) {
 		plugin_filename = (char*)node->data;
 		plugin = load_plugin(plugin_filename);
 		if (plugin != NULL) {
@@ -122,6 +127,7 @@ EXPORT int derp_get_facts_size() {
 
 EXPORT GSList_String* derp_get_facts() {
 	GSList_String* list = NULL;
+	GSList_String* pointer = NULL;
 	DATA_OBJECT fact_list;
 
 	GetFactList(&fact_list, NULL);
@@ -143,7 +149,10 @@ EXPORT GSList_String* derp_get_facts() {
 		char* fact_string = malloc(len + 1);
 		assert(fact_string != NULL);
 		strncpy(fact_string, router_buffer, len + 1);
-		list = g_slist_append(list, fact_string);
+		pointer = g_slist_append(pointer, fact_string);
+		if (list == NULL) {
+			list = pointer;
+		}
 	}
 
 	return list;
@@ -222,6 +231,7 @@ EXPORT gboolean derp_add_rule(char* name, GSList_DerpTriple* head, GSList_DerpTr
 		strcat(buf, (char*)node->data);
 	}
 	derp_log(DERP_LOG_DEBUG, "Asserting: %s", buf);
+	g_slist_free(assertion);
 	return derp_assert_generic(buf);
 }
 
@@ -253,6 +263,28 @@ int router_exit_function(int exit_code) {
 	return 0;
 }
 
+void shutdown() {
+	// Shut down plugins
+	if (plugins != NULL) {
+		DerpPlugin* p;
+		for (GSList_DerpPlugin* node = plugins; node; node = node->next) {
+			p = (DerpPlugin*)node->data;
+			derp_log(DERP_LOG_DEBUG, "Stopping plugin: %s", p->name);
+			if (p->shutdown_plugin != NULL) {
+				p->shutdown_plugin();
+			}
+		}
+
+		// Do not use g_list_free_full, as DerpPlugins are not malloc'd but dlsym'd
+		g_slist_free(plugins);
+	}
+
+	// Shut down CLIPS environment
+	if (theEnv != NULL) {
+		DestroyEnvironment(theEnv);
+	}
+}
+
 void sighandler(int signum) {
 	int numPointers;
 	switch (signum) {
@@ -263,6 +295,9 @@ void sighandler(int signum) {
 			backtrace_symbols_fd(symbols, numPointers, STDERR_FILENO);
 			exit(EXIT_FAILURE);
 			break;
+		case SIGTERM:
+			shutdown();
+			break;
 		default:
 			break;
 	}
@@ -271,8 +306,11 @@ void sighandler(int signum) {
 int main() {
 	// Install signal handler
 	struct sigaction sa;
+	sigset_t sigset;
+	sigemptyset(&sigset);
 	sa.sa_handler = sighandler;
 	sa.sa_flags = 0;
+	sa.sa_mask = sigset;
 	sigaction(SIGSEGV, &sa, NULL);
 
 	// Initialize rule engine
@@ -293,15 +331,16 @@ int main() {
 
 	// Load Plugins
 	GSList_String* list = NULL;
-	list = g_slist_append(list, "./libplugin1.so");
-	list = g_slist_append(list, "./libraptor.so");
-	GSList_DerpPlugin* plugins = load_plugins(list);
+	list = g_slist_append(list, strdup("./libplugin1.so"));
+	list = g_slist_append(list, strdup("./libraptor.so"));
+	plugins = load_plugins(list);
+	g_slist_free_full(list, derp_free_data);
 
 	DerpPlugin* p;
 	for (GSList_DerpPlugin* node = plugins; node; node = node->next) {
 		p = (DerpPlugin*)node->data;
-		derp_log(DERP_LOG_DEBUG, "Creating plugin: %s", p->name);
-		p->create_plugin();
+		derp_log(DERP_LOG_DEBUG, "Starting plugin: %s", p->name);
+		p->start_plugin();
 	}
 
 	// Enter main program
@@ -314,10 +353,14 @@ int main() {
 
 	derp_assert_generic("(run)");
 
-	for (GSList_String* node = derp_get_facts(); node; node = node->next) {
+	GSList_String* facts = derp_get_facts();
+	for (GSList_String* node = facts; node; node = node->next) {
 		printf("Fact:\n%s\n", (char*)node->data);
 	}
+	g_slist_free_full(facts, derp_free_data);
 
+
+	shutdown();
 	return 0;
 }
 

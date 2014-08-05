@@ -19,7 +19,7 @@ static void delete_triple(DerpTriple* t) {
 	free(t);
 }
 
-void create_plugin() {
+void start_plugin() {
 	// Assert fact
 	GSList_DerpTriple* head = NULL;
 	DerpTriple* h1 = derp_triple("dc:NLM", "dc:modified", "\"2008-01-14\"");
@@ -30,9 +30,10 @@ void create_plugin() {
 	body = g_slist_append(body, b1);
 
 	derp_add_rule("foo", head, body);
-
 	delete_triple(h1);
 	delete_triple(b1);
+	g_slist_free(head);
+	g_slist_free(body);
 
 	// Check for fact
 	GSList_String* facts = derp_get_facts();
@@ -40,17 +41,25 @@ void create_plugin() {
 	for (int i = 0; (node = g_slist_nth(facts, i)); i++) {
 		printf("Fact: %s\n", (char*)node->data);
 	}
+	g_slist_free_full(facts, derp_free_data);
 
 	// List rules
 	GSList_String* rules = derp_get_rules();
 	for (int i = 0; (node = g_slist_nth(rules, i)); i++) {
 		printf("Rule: %s\n", (char*)node->data);
 	}
+	//g_slist_free_full(rules, derp_free_data);
+	g_slist_free(rules);
+}
+
+void shutdown_plugin() {
+	printf("Shutting down p1\n");
 }
 
 static DerpPlugin plugin = {
 	"Test",
-	create_plugin
+	start_plugin,
+	shutdown_plugin
 };
 
 DerpPlugin* derp_init_plugin(void) {

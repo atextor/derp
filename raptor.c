@@ -5,16 +5,20 @@
 #include <raptor2.h>
 #include "derp.h"
 
+#define max(a, b) \
+	({ __typeof__ (a) _a = (a); \
+	__typeof__ (b) _b = (b); \
+	_a > _b ? _a : _b; })
+
 GHashTable* prefix_map;
 
 // For an URI such as http://foo.bar/baz returns the qname, if the prefix is
 // known, for example bar:baz. If the prefix is unknown, the result is the RDF
 // form of the URI, e.g. <http://foo.bar/baz>.
-static char* uri_to_qname(char* uri) {
+static void uri_to_qname(char* uri, char* qname, int qname_size) {
 	char* base_uri;
 	char* prefix;
 	char* suffix;
-	char* result;
 	int resultlen;
 
 	// Split URI in base URI and suffix
@@ -31,57 +35,59 @@ static char* uri_to_qname(char* uri) {
 
 	if (prefix != NULL && strlen(suffix) > 0) {
 		resultlen = strlen(prefix) + strlen(suffix) + 1;
-		result = malloc(resultlen + 1);
-		snprintf(result, resultlen + 1, "%s:%s", prefix, suffix);
+		snprintf(qname, max(qname_size, resultlen + 1), "%s:%s", prefix, suffix);
 	} else {
 		resultlen = strlen(uri) + 2;
-		result = malloc(resultlen + 1);
-		snprintf(result, resultlen + 1, "<%s>", uri);
+		snprintf(qname, max(qname_size, resultlen + 1), "<%s>", uri);
 	}
 
-	return result;
+	free(base_uri);
 }
 
-static char* term_to_readable(raptor_term* term) {
+static void term_to_readable(raptor_term* term, char* readable, int readable_size) {
 	unsigned char* uri;
-	char* result;
+	//char* result;
 	char* str;
 	int resultsize;
 	switch (term->type) {
 		case RAPTOR_TERM_TYPE_URI:
 			uri = raptor_uri_as_string(term->value.uri);
-			return uri_to_qname((char*)uri);
+			uri_to_qname((char*)uri, readable, readable_size);
+			return;
 		case RAPTOR_TERM_TYPE_LITERAL:
 			str = (char*)(term->value.literal.string);
 			resultsize = strlen(str) + 2;
-			result = malloc(resultsize + 1);
-			snprintf(result, resultsize + 1, "\"%s\"", str);
-			return result;
+			snprintf(readable, max(readable_size, resultsize + 1), "\"%s\"", str);
+			return;// result;
 		case RAPTOR_TERM_TYPE_BLANK:
-			return strdup((char*)raptor_term_to_string(term));
+			snprintf(readable, readable_size, "%s", (char*)raptor_term_to_string(term));
+			return;
 		default:
 			derp_log(DERP_LOG_WARNING, "Unknown thing in RDF term: %s", (char*)raptor_term_to_string(term));
-			return NULL;
+			return;
 	}
 }
 
 static void handle_triple(void* user_data, raptor_statement* triple) {
-	char* subject = term_to_readable(triple->subject);
-	char* predicate = term_to_readable(triple->predicate);
-	char* object = term_to_readable(triple->object);
-	derp_assert_triple(subject, predicate, object);
+	int bufsize = 1024;
+	char* s = malloc(bufsize);
+	char* p = malloc(bufsize);
+	char* o = malloc(bufsize);
+	term_to_readable(triple->subject, s, bufsize);
+	term_to_readable(triple->predicate, p, bufsize);
+	term_to_readable(triple->object, o, bufsize);
+	derp_assert_triple(s, p, o);
+	free(s);
+	free(p);
+	free(o);
 }
 
-static void free_data(gpointer data) {
-	free(data);
-}
-
-void create_plugin() {
+void start_plugin() {
 	prefix_map = g_hash_table_new_full(
-			g_str_hash,   // hash function
-			g_str_equal,  // comparator
-			free_data,    // key destructor
-			free_data);   // val destructor
+			g_str_hash,        // hash function
+			g_str_equal,       // comparator
+			derp_free_data,    // key destructor
+			derp_free_data);   // val destructor
 
 	// Fill prefix map
 	g_hash_table_insert(prefix_map, strdup("http://purl.org/dc/terms/"), strdup("dc"));
@@ -107,19 +113,24 @@ void create_plugin() {
 	raptor_parser_parse_file(rdf_parser, uri, base_uri);
 
 	raptor_free_parser(rdf_parser);
-
 	raptor_free_uri(base_uri);
 	raptor_free_uri(uri);
 	raptor_free_memory(uri_string);
-
 	raptor_free_world(world);
 
 	derp_log(DERP_LOG_INFO, "%d facts loaded", derp_get_facts_size());
 }
 
+void shutdown_plugin() {
+	printf("Shutting down raptor\n");
+	//free(prefix_map);
+	g_hash_table_destroy(prefix_map);
+}
+
 static DerpPlugin plugin = {
 	"Raptor",
-	create_plugin
+	start_plugin,
+	shutdown_plugin
 };
 
 DerpPlugin* derp_init_plugin(void) {
