@@ -187,55 +187,25 @@ EXPORT GSList_String* derp_get_rule_definition(char* rulename) {
 }
 
 EXPORT gboolean derp_add_rule(char* name, GSList_DerpTriple* head, GSList_DerpTriple* body) {
-	GSList_String* assertion = NULL;
-	GSList_String* assertion_head = NULL;
-
+	GString* rule_assertion = g_string_sized_new(256);
+	g_string_append_printf(rule_assertion, "(defrule %s ", name);
 	DerpTriple* triple;
-
-	assertion = g_slist_append(assertion, "(defrule ");
-	assertion_head = assertion;
-	assertion = g_slist_append(assertion, name);
-	assertion = g_slist_append(assertion, " ");
-
 	for (GSList_DerpTriple* h = head; h; h = h->next) {
 		triple = (DerpTriple*)h->data;
-		assertion = g_slist_append(assertion, "(triple (subj ");
-		assertion = g_slist_append(assertion, triple->subject);
-		assertion = g_slist_append(assertion, ") (pred ");
-		assertion = g_slist_append(assertion, triple->predicate);
-		assertion = g_slist_append(assertion, ") (obj ");
-		assertion = g_slist_append(assertion, triple->object);
-		assertion = g_slist_append(assertion, "))");
+		g_string_append_printf(rule_assertion, "(triple (subj %s) (pred %s) (obj %s))",
+				triple->subject, triple->predicate, triple->object);
 	}
-
-	assertion = g_slist_append(assertion, " => (assert ");
-
+	g_string_append(rule_assertion, " => (assert ");
 	for (GSList_DerpTriple* h = body; h; h = h->next) {
 		triple = (DerpTriple*)h->data;
-		assertion = g_slist_append(assertion, "(triple (subj ");
-		assertion = g_slist_append(assertion, triple->subject);
-		assertion = g_slist_append(assertion, ") (pred ");
-		assertion = g_slist_append(assertion, triple->predicate);
-		assertion = g_slist_append(assertion, ") (obj ");
-		assertion = g_slist_append(assertion, triple->object);
-		assertion = g_slist_append(assertion, "))");
+		g_string_append_printf(rule_assertion, "(triple (subj %s) (pred %s) (obj %s))",
+				triple->subject, triple->predicate, triple->object);
 	}
+	g_string_append(rule_assertion, "))");
 
-	assertion = g_slist_append(assertion, "))");
-
-	int size = 2048;
-	char* buf = malloc(size);
-	if (buf == NULL) {
-		return FALSE;
-	}
-
-	for (GSList_String* node = assertion_head; node; node = node->next) {
-		strcat(buf, (char*)node->data);
-	}
-	derp_log(DERP_LOG_DEBUG, "Asserting: %s", buf);
-	g_slist_free(assertion);
-	int result =  derp_assert_generic(buf);
-	free(buf);
+	printf("Assertion: %s\n", rule_assertion->str);
+	int result = derp_assert_generic(rule_assertion->str);
+	g_string_free(rule_assertion, TRUE);
 	return result;
 }
 
