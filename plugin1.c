@@ -48,7 +48,6 @@ void start_plugin() {
 	for (int i = 0; (node = g_slist_nth(rules, i)); i++) {
 		printf("Rule: %s\n", (char*)node->data);
 	}
-	//g_slist_free_full(rules, derp_free_data);
 	g_slist_free(rules);
 }
 

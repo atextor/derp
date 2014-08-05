@@ -10,7 +10,7 @@
 	__typeof__ (b) _b = (b); \
 	_a > _b ? _a : _b; })
 
-GHashTable* prefix_map;
+static GHashTable* prefix_map;
 
 // For an URI such as http://foo.bar/baz returns the qname, if the prefix is
 // known, for example bar:baz. If the prefix is unknown, the result is the RDF
@@ -58,7 +58,7 @@ static void term_to_readable(raptor_term* term, char* readable, int readable_siz
 			str = (char*)(term->value.literal.string);
 			resultsize = strlen(str) + 2;
 			snprintf(readable, max(readable_size, resultsize + 1), "\"%s\"", str);
-			return;// result;
+			return;
 		case RAPTOR_TERM_TYPE_BLANK:
 			snprintf(readable, readable_size, "%s", (char*)raptor_term_to_string(term));
 			return;
@@ -101,15 +101,11 @@ void start_plugin() {
 	raptor_uri* base_uri;
 
 	world = raptor_new_world();
-
 	rdf_parser = raptor_new_parser(world, "rdfxml");
-
 	raptor_parser_set_statement_handler(rdf_parser, NULL, handle_triple);
-
 	uri_string = raptor_uri_filename_to_uri_string("dcterms.rdf");
 	uri = raptor_new_uri(world, uri_string);
 	base_uri = raptor_uri_copy(uri);
-
 	raptor_parser_parse_file(rdf_parser, uri, base_uri);
 
 	raptor_free_parser(rdf_parser);
@@ -122,8 +118,6 @@ void start_plugin() {
 }
 
 void shutdown_plugin() {
-	printf("Shutting down raptor\n");
-	//free(prefix_map);
 	g_hash_table_destroy(prefix_map);
 }
 
