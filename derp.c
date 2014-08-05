@@ -52,7 +52,6 @@ EXPORT void derp_log(derp_log_level level, char* fmt, ...) {
 	putchar('\n');
 }
 
-
 DerpPlugin* load_plugin(char* filename) {
 	DerpPlugin*(*derp_init_plugin)(void);
 	DerpPlugin* plugin = NULL;
@@ -102,20 +101,21 @@ EXPORT gboolean derp_assert_generic(char* input) {
 	return RouteCommand(theEnv, input, FALSE);
 }
 
-
 EXPORT gboolean derp_assert_fact(char* fact) {
 	void* result = AssertString(fact);
 	return (result != NULL);
 }
 
 EXPORT gboolean derp_assert_triple(char* subject, char* predicate, char* object) {
-	// TODO make reentrant
-	static char buf[2048];
-	int result = snprintf(buf, 2048, "(triple (subj %s) (pred %s) (obj %s))", subject, predicate, object);
-	if (result >= 2048 || result < 0) {
+	int size = strlen(subject) + strlen(predicate) + strlen(object) + 50;
+	char* buf = malloc(size);
+	int result = snprintf(buf, size, "(triple (subj %s) (pred %s) (obj %s))", subject, predicate, object);
+	if (result >= size || result < 0) {
 		return FALSE;
 	}
-	return derp_assert_fact(buf);
+	result = derp_assert_fact(buf);
+	free(buf);
+	return result;
 }
 
 
