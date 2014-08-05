@@ -13,15 +13,14 @@ void start_plugin() {
 
 	// Check for fact
 	GSList_String* facts = derp_get_facts();
-	GSList_String* node;
-	for (int i = 0; (node = g_slist_nth(facts, i)); i++) {
+	for (GSList_String* node = facts; node; node = node->next) {
 		printf("Fact: %s\n", (char*)node->data);
 	}
 	g_slist_free_full(facts, derp_free_data);
 
 	// List rules
 	GSList_String* rules = derp_get_rules();
-	for (int i = 0; (node = g_slist_nth(rules, i)); i++) {
+	for (GSList_String* node = rules; node; node = node->next) {
 		printf("Rule: %s\n", (char*)node->data);
 	}
 	g_slist_free(rules);
