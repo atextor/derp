@@ -27,9 +27,10 @@ typedef enum {
 } derp_log_level;
 
 struct _DerpPlugin {
-	char* name;
+	gchar* name;
 	void (*start_plugin)(void);
 	void (*shutdown_plugin)(void);
+	void (*callback)(gchar* rule);
 };
 
 typedef struct _DerpPlugin DerpPlugin;
@@ -56,6 +57,7 @@ gboolean derp_assert_fact(GString* fact);
 gboolean derp_assert_generic(GString* input);
 gboolean derp_assert_triple(GString* subject, GString* predicate, GString* object);
 gboolean derp_assert_rule(DerpRule* rule);
+gboolean derp_add_callback(DerpPlugin* callee, gchar* name, GSList_DerpTriple* head);
 int derp_get_facts_size();
 GSList_String* derp_get_facts();
 GSList_String* derp_get_rules();

@@ -23,7 +23,8 @@ static int router_buffer_filled = 0;
 static void router_buffer_clear();
 static void *theEnv = NULL;
 
-GSList_DerpPlugin* plugins = NULL;
+// Maps plugin name to plugin struct
+GHashTable* plugins = NULL;
 
 EXPORT void derp_free_data(gpointer data) {
 	free(data);
@@ -81,8 +82,11 @@ DerpPlugin* load_plugin(gchar* filename) {
 	return plugin;
 }
 
-GSList_DerpPlugin* load_plugins(GSList_String* plugins) {
-	GSList_DerpPlugin* result = NULL;
+GHashTable* load_plugins(GSList_String* plugins) {
+	GHashTable* result = g_hash_table_new(
+			g_str_hash,        // hash function
+			g_str_equal);      // comparator
+
 	gchar* plugin_filename;
 	DerpPlugin* plugin = NULL;
 
@@ -90,7 +94,7 @@ GSList_DerpPlugin* load_plugins(GSList_String* plugins) {
 		plugin_filename = (gchar*)node->data;
 		plugin = load_plugin(plugin_filename);
 		if (plugin != NULL) {
-			result = g_slist_append(result, plugin);
+			g_hash_table_insert(result, plugin->name, plugin);
 		}
 	}
 
@@ -266,6 +270,24 @@ EXPORT void derp_delete_rule(DerpRule* rule) {
 	free(rule);
 }
 
+EXPORT gboolean derp_add_callback(DerpPlugin* callee, gchar* name, GSList_DerpTriple* head) {
+	GString* assertion = g_string_sized_new(256);
+	g_string_append_printf(assertion, "(defrule %s ", name);
+	DerpTriple* triple;
+	for (GSList_DerpTriple* h = head; h; h = h->next) {
+		triple = (DerpTriple*)h->data;
+		g_string_append_printf(assertion, "(triple (subj %s) (pred %s) (obj %s))",
+				triple->subject, triple->predicate, triple->object);
+	}
+	g_string_append_printf(assertion, " => (rule_callback \"%s\" \"%s\"))", callee->name, name);
+
+	int result = derp_assert_generic(assertion);
+	g_string_free(assertion, TRUE);
+	derp_delete_triple_list(head);
+
+	return result;
+}
+
 static void router_buffer_clear() {
 	memset(router_buffer, 0, ROUTER_BUFFER_SIZE);
 	router_buffer_filled = 0;
@@ -298,7 +320,8 @@ void shutdown() {
 	// Shut down plugins
 	if (plugins != NULL) {
 		DerpPlugin* p;
-		for (GSList_DerpPlugin* node = plugins; node; node = node->next) {
+		GList* plugin_list = g_hash_table_get_values(plugins);
+		for (GList* node = plugin_list; node; node = node->next) {
 			p = (DerpPlugin*)node->data;
 			derp_log(DERP_LOG_DEBUG, "Stopping plugin: %s", p->name);
 			if (p->shutdown_plugin != NULL) {
@@ -306,14 +329,38 @@ void shutdown() {
 			}
 		}
 
-		// Do not use g_list_free_full, as DerpPlugins are not malloc'd but dlsym'd
-		g_slist_free(plugins);
+		g_list_free(plugin_list);
+		g_hash_table_unref(plugins);
 	}
 
 	// Shut down CLIPS environment
 	if (theEnv != NULL) {
 		DestroyEnvironment(theEnv);
 	}
+}
+
+int* rule_callback(void* arg) {
+	int argc = RtnArgCount();
+	if (argc != 2) {
+		derp_log(DERP_LOG_ERROR, "Wrong number of callback arguments: %d", argc);
+		return NULL;
+	}
+
+	char* plugin_name = RtnLexeme(1);
+	char* rule_name = RtnLexeme(2);
+	DerpPlugin* p = g_hash_table_lookup(plugins, plugin_name);
+	if (p == NULL) {
+		derp_log(DERP_LOG_ERROR, "Can't callback plugin %s: Unknown plugin", plugin_name);
+		return NULL;
+	}
+
+	if (p->callback == NULL) {
+		derp_log(DERP_LOG_ERROR, "Can't callback plugin %s: No callback function", plugin_name);
+		return NULL;
+	}
+
+	p->callback(rule_name);
+	return NULL;
 }
 
 void sighandler(int signum) {
@@ -348,6 +395,17 @@ int main() {
 	theEnv = CreateEnvironment();
 	Load("init.clp");
 
+	// Register callback function.
+	// Arguments:
+	// 1 - the CLIPS environment
+	// 2 - the name of the function within CLIPS rules
+	// 3 - return type within rules (v = void, see page 20 of CLIPS Advanced Programming Guide)
+	// 4 - function pointer to implementation, PTIEF = (int (*)(void *))
+	// 5 - name of the implementation function as string
+	// 6 - argument restrictions (22s = exactly two strings, see page 22 of CLIPS Advanced Programming Guide)
+	int r = EnvDefineFunction2(theEnv, "rule_callback", 'v', PTIEF rule_callback, "rule_callback", "22s");
+	printf("result: %d\n", r);
+
 	// Add I/O routers
 	int result = AddRouter(ROUTER_NAME, 0,
 			router_query_function,
@@ -368,25 +426,24 @@ int main() {
 	g_slist_free_full(list, derp_free_data);
 
 	DerpPlugin* p;
-	for (GSList_DerpPlugin* node = plugins; node; node = node->next) {
+	GList* plugin_list = g_hash_table_get_values(plugins);
+	for (GList* node = plugin_list; node; node = node->next) {
 		p = (DerpPlugin*)node->data;
 		derp_log(DERP_LOG_DEBUG, "Starting plugin: %s", p->name);
 		p->start_plugin();
 	}
+	g_list_free(plugin_list);
 
 	// Enter main program
 	derp_log(DERP_LOG_DEBUG, "Initialized");
 
-	// Test functions
-	/*
-	derp_assert_fact("(example (x 3) (y red) (z 1.5 b))");
-	*/
-
+	// Run rule engine
 	GString* run = g_string_new("(run)");
 	derp_assert_generic(run);
 	g_string_free(run, TRUE);
 
 	/*
+	// List facts
 	GSList_String* facts = derp_get_facts();
 	for (GSList_String* node = facts; node; node = node->next) {
 		printf("Fact:\n%s\n", (char*)node->data);

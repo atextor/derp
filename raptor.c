@@ -110,7 +110,8 @@ void shutdown_plugin() {
 static DerpPlugin plugin = {
 	"Raptor",
 	start_plugin,
-	shutdown_plugin
+	shutdown_plugin,
+	NULL
 };
 
 DerpPlugin* derp_init_plugin(void) {
