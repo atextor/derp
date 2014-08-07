@@ -403,8 +403,7 @@ int main() {
 	// 4 - function pointer to implementation, PTIEF = (int (*)(void *))
 	// 5 - name of the implementation function as string
 	// 6 - argument restrictions (22s = exactly two strings, see page 22 of CLIPS Advanced Programming Guide)
-	int r = EnvDefineFunction2(theEnv, "rule_callback", 'v', PTIEF rule_callback, "rule_callback", "22s");
-	printf("result: %d\n", r);
+	EnvDefineFunction2(theEnv, "rule_callback", 'v', PTIEF rule_callback, "rule_callback", "22s");
 
 	// Add I/O routers
 	int result = AddRouter(ROUTER_NAME, 0,
