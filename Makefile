@@ -33,4 +33,5 @@ clean:
 	rm -f $(PROG) $(MODS) libplugin1.so plugin1.o libraptor.so raptor.o
 #	cd $(CLIPSDIR); make clean
 
-
+check: $(PROG)
+	G_DEBUG=gc-friendly G_SLICE=always-malloc valgrind --leak-check=full ./$(PROG) 2>&1|less
