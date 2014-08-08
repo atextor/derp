@@ -209,7 +209,6 @@ EXPORT gboolean derp_assert_rule(DerpRule* rule) {
 	}
 	g_string_append(rule_assertion, "))");
 
-	printf("Asserting rule: %s\n", rule_assertion->str);
 	int result = derp_assert_generic(rule_assertion);
 	g_string_free(rule_assertion, TRUE);
 
@@ -272,6 +271,7 @@ EXPORT void derp_delete_rule(DerpRule* rule) {
 }
 
 EXPORT gboolean derp_add_callback(DerpPlugin* callee, gchar* name, GSList_DerpTriple* head) {
+	GHashTable* variables = g_hash_table_new(g_str_hash, g_str_equal);
 	GString* assertion = g_string_sized_new(256);
 	g_string_append_printf(assertion, "(defrule %s ", name);
 	DerpTriple* triple;
@@ -279,8 +279,29 @@ EXPORT gboolean derp_add_callback(DerpPlugin* callee, gchar* name, GSList_DerpTr
 		triple = (DerpTriple*)h->data;
 		g_string_append_printf(assertion, "(triple %s %s %s)",
 				triple->subject, triple->predicate, triple->object);
+		if (triple->subject[0] == '?') {
+			g_hash_table_insert(variables, triple->subject, triple->subject);
+		}
+		if (triple->predicate[0] == '?') {
+			g_hash_table_insert(variables, triple->predicate, triple->predicate);
+		}
+		if (triple->object[0] == '?') {
+			g_hash_table_insert(variables, triple->object, triple->object);
+		}
 	}
-	g_string_append_printf(assertion, " => (rule_callback \"%s\" \"%s\"))", callee->name, name);
+	g_string_append_printf(assertion, " => (rule_callback \"%s\" \"%s\" ", callee->name, name);
+
+	// Append list of variable names to assertion, so that callback function
+	// can receive the bound values
+	GList* variable_list = g_hash_table_get_keys(variables);
+	gchar* var;
+	for (GList* node = variable_list; node; node = node->next) {
+			var = (gchar*)node->data;
+			g_string_append_printf(assertion, "\"%s\" %s ", var + 1, var);
+	}
+	g_list_free(variable_list);
+	g_hash_table_unref(variables);
+	g_string_append(assertion, "))");
 
 	int result = derp_assert_generic(assertion);
 	g_string_free(assertion, TRUE);
@@ -342,13 +363,10 @@ void shutdown() {
 
 int* rule_callback(void* arg) {
 	int argc = RtnArgCount();
-	if (argc != 2) {
-		derp_log(DERP_LOG_ERROR, "Wrong number of callback arguments: %d", argc);
-		return NULL;
-	}
 
 	char* plugin_name = RtnLexeme(1);
 	char* rule_name = RtnLexeme(2);
+
 	DerpPlugin* p = g_hash_table_lookup(plugins, plugin_name);
 	if (p == NULL) {
 		derp_log(DERP_LOG_ERROR, "Can't callback plugin %s: Unknown plugin", plugin_name);
@@ -360,7 +378,17 @@ int* rule_callback(void* arg) {
 		return NULL;
 	}
 
-	p->callback(rule_name);
+	// Construct argument list from callback arguments if there are any
+	if (argc > 2) {
+		GHashTable* arguments = g_hash_table_new(g_str_hash, g_str_equal);
+		for (int i = 3; i <= argc; i+=2) {
+			g_hash_table_insert(arguments, RtnLexeme(i), RtnLexeme(i + 1));
+		}
+
+		p->callback(rule_name, arguments);
+	} else {
+		p->callback(rule_name, NULL);
+	}
 	return NULL;
 }
 
@@ -402,8 +430,9 @@ int main() {
 	// 3 - return type within rules (v = void, see page 20 of CLIPS Advanced Programming Guide)
 	// 4 - function pointer to implementation, PTIEF = (int (*)(void *))
 	// 5 - name of the implementation function as string
-	// 6 - argument restrictions (22s = exactly two strings, see page 22 of CLIPS Advanced Programming Guide)
-	EnvDefineFunction2(theEnv, "rule_callback", 'v', PTIEF rule_callback, "rule_callback", "22s");
+	// 6 - argument restrictions (2*uss = exactly two strings followed by any number of any arguments,
+	//     see page 22 of CLIPS Advanced Programming Guide)
+	EnvDefineFunction2(theEnv, "rule_callback", 'v', PTIEF rule_callback, "rule_callback", "2*uss");
 
 	// Add I/O routers
 	int result = AddRouter(ROUTER_NAME, 0,

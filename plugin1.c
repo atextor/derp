@@ -21,7 +21,8 @@ void start_plugin() {
 			 T("BAR", "BAR", "BAR") ),
 		THEN ( T("BAZ", "BAZ", "BAZ")) );
 
-	derp_add_callback(&plugin, "test", IF(T("BAZ", "BAZ", "BAZ")));
+	derp_add_callback(&plugin, "test", IF(T("dc:NLM", "dc:modified", "?modified")));
+	derp_add_callback(&plugin, "test2", IF(T("BAZ", "BAZ", "BAZ")));
 
 	// Check for fact
 	/*
@@ -40,8 +41,15 @@ void start_plugin() {
 	g_slist_free(rules);
 }
 
-void callback(gchar* rule) {
-	printf("callback called for rule %s\n", rule);
+void callback(gchar* rule, GHashTable* arguments) {
+	printf("Callback received for rule %s\n", rule);
+	if (!g_strcmp0(rule, "test")) {
+		printf("Bound argument is %s\n", (char*)g_hash_table_lookup(arguments, "modified"));
+	}
+
+	if (arguments != NULL) {
+		g_hash_table_unref(arguments);
+	}
 }
 
 static DerpPlugin plugin = {

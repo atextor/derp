@@ -30,7 +30,7 @@ struct _DerpPlugin {
 	gchar* name;
 	void (*start_plugin)(void);
 	void (*shutdown_plugin)(void);
-	void (*callback)(gchar* rule);
+	void (*callback)(gchar* rule, GHashTable* arguments);
 };
 
 typedef struct _DerpPlugin DerpPlugin;
