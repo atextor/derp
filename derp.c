@@ -112,7 +112,7 @@ EXPORT gboolean derp_assert_fact(GString* fact) {
 
 EXPORT gboolean derp_assert_triple(GString* subject, GString* predicate, GString* object) {
 	GString* fact = g_string_sized_new(100);
-	g_string_append_printf(fact, "(triple (subj %s) (pred %s) (obj %s))",
+	g_string_append_printf(fact, "(triple %s %s %s)",
 			subject->str, predicate->str, object->str);
 	int result = derp_assert_fact(fact);
 	g_string_free(fact, TRUE);
@@ -198,17 +198,18 @@ EXPORT gboolean derp_assert_rule(DerpRule* rule) {
 	DerpTriple* triple;
 	for (GSList_DerpTriple* h = rule->head; h; h = h->next) {
 		triple = (DerpTriple*)h->data;
-		g_string_append_printf(rule_assertion, "(triple (subj %s) (pred %s) (obj %s))",
+		g_string_append_printf(rule_assertion, "(triple %s %s %s)",
 				triple->subject, triple->predicate, triple->object);
 	}
 	g_string_append(rule_assertion, " => (assert ");
 	for (GSList_DerpTriple* h = rule->body; h; h = h->next) {
 		triple = (DerpTriple*)h->data;
-		g_string_append_printf(rule_assertion, "(triple (subj %s) (pred %s) (obj %s))",
+		g_string_append_printf(rule_assertion, "(triple %s %s %s)",
 				triple->subject, triple->predicate, triple->object);
 	}
 	g_string_append(rule_assertion, "))");
 
+	printf("Asserting rule: %s\n", rule_assertion->str);
 	int result = derp_assert_generic(rule_assertion);
 	g_string_free(rule_assertion, TRUE);
 
@@ -276,7 +277,7 @@ EXPORT gboolean derp_add_callback(DerpPlugin* callee, gchar* name, GSList_DerpTr
 	DerpTriple* triple;
 	for (GSList_DerpTriple* h = head; h; h = h->next) {
 		triple = (DerpTriple*)h->data;
-		g_string_append_printf(assertion, "(triple (subj %s) (pred %s) (obj %s))",
+		g_string_append_printf(assertion, "(triple %s %s %s)",
 				triple->subject, triple->predicate, triple->object);
 	}
 	g_string_append_printf(assertion, " => (rule_callback \"%s\" \"%s\"))", callee->name, name);
@@ -393,7 +394,6 @@ int main() {
 
 	// Initialize rule engine
 	theEnv = CreateEnvironment();
-	Load("init.clp");
 
 	// Register callback function.
 	// Arguments:
@@ -445,7 +445,7 @@ int main() {
 	// List facts
 	GSList_String* facts = derp_get_facts();
 	for (GSList_String* node = facts; node; node = node->next) {
-		printf("Fact:\n%s\n", (char*)node->data);
+		printf("fact %s", (char*)node->data);
 	}
 	g_slist_free_full(facts, derp_free_data);
 	*/
