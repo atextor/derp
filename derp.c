@@ -384,6 +384,7 @@ int* rule_callback(void* arg) {
 		}
 
 		p->callback(rule_name, arguments);
+		g_hash_table_unref(arguments);
 	} else {
 		p->callback(rule_name, NULL);
 	}
