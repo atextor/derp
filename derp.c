@@ -101,20 +101,18 @@ GHashTable* load_plugins(GSList_String* plugins) {
 	return result;
 }
 
-EXPORT gboolean derp_assert_generic(GString* input) {
-	return RouteCommand(theEnv, input->str, FALSE);
+EXPORT gboolean derp_assert_generic(gchar* input) {
+	return RouteCommand(theEnv, input, FALSE);
 }
 
-EXPORT gboolean derp_assert_fact(GString* fact) {
-	void* result = AssertString(fact->str);
-	return (result != NULL);
+EXPORT gboolean derp_assert_fact(gchar* fact) {
+	return AssertString(fact) != NULL;
 }
 
-EXPORT gboolean derp_assert_triple(GString* subject, GString* predicate, GString* object) {
+EXPORT gboolean derp_assert_triple(gchar* subject, gchar* predicate, gchar* object) {
 	GString* fact = g_string_sized_new(100);
-	g_string_append_printf(fact, "(triple %s %s %s)",
-			subject->str, predicate->str, object->str);
-	int result = derp_assert_fact(fact);
+	g_string_append_printf(fact, "(triple %s %s %s)", subject, predicate, object);
+	int result = derp_assert_fact(fact->str);
 	g_string_free(fact, TRUE);
 	return result;
 }
@@ -181,7 +179,7 @@ EXPORT GSList_String* derp_get_rules() {
 	return list;
 }
 
-EXPORT GSList_String* derp_get_rule_definition(GString* rulename) {
+EXPORT GSList_String* derp_get_rule_definition(gchar* rulename) {
 	// TODO
 	return NULL;
 }
@@ -194,7 +192,7 @@ EXPORT gboolean derp_assert_rule(DerpRule* rule) {
 	}
 
 	GString* rule_assertion = g_string_sized_new(256);
-	g_string_append_printf(rule_assertion, "(defrule %s ", rule->name->str);
+	g_string_append_printf(rule_assertion, "(defrule %s ", rule->name);
 	DerpTriple* triple;
 	for (GSList_DerpTriple* h = rule->head; h; h = h->next) {
 		triple = (DerpTriple*)h->data;
@@ -209,7 +207,7 @@ EXPORT gboolean derp_assert_rule(DerpRule* rule) {
 	}
 	g_string_append(rule_assertion, "))");
 
-	int result = derp_assert_generic(rule_assertion);
+	int result = derp_assert_generic(rule_assertion->str);
 	g_string_free(rule_assertion, TRUE);
 
 	derp_delete_rule(rule);
@@ -255,16 +253,16 @@ EXPORT void derp_delete_triple_list(GSList_DerpTriple* list) {
 	g_slist_free_full(list, (GDestroyNotify)derp_delete_triple);
 }
 
-EXPORT DerpRule* derp_new_rule(GString* name, GSList_DerpTriple* head, GSList_DerpTriple* body) {
+EXPORT DerpRule* derp_new_rule(gchar* name, GSList_DerpTriple* head, GSList_DerpTriple* body) {
 	DerpRule* rule = malloc(sizeof(DerpRule));
-	rule->name = name;
+	rule->name = strdup(name);
 	rule->head = head;
 	rule->body = body;
 	return rule;
 }
 
 EXPORT void derp_delete_rule(DerpRule* rule) {
-	g_string_free(rule->name, TRUE);
+	free(rule->name);
 	derp_delete_triple_list(rule->head);
 	derp_delete_triple_list(rule->body);
 	free(rule);
@@ -303,7 +301,7 @@ EXPORT gboolean derp_add_callback(DerpPlugin* callee, gchar* name, GSList_DerpTr
 	g_hash_table_unref(variables);
 	g_string_append(assertion, "))");
 
-	int result = derp_assert_generic(assertion);
+	int result = derp_assert_generic(assertion->str);
 	g_string_free(assertion, TRUE);
 	derp_delete_triple_list(head);
 
@@ -466,9 +464,7 @@ int main() {
 	derp_log(DERP_LOG_DEBUG, "Initialized");
 
 	// Run rule engine
-	GString* run = g_string_new("(run)");
-	derp_assert_generic(run);
-	g_string_free(run, TRUE);
+	derp_assert_generic("(run)");
 
 	/*
 	// List facts

@@ -62,7 +62,7 @@ static void handle_triple(void* user_data, raptor_statement* triple) {
 	GString* s = term_to_readable(triple->subject);
 	GString* p = term_to_readable(triple->predicate);
 	GString* o = term_to_readable(triple->object);
-	derp_assert_triple(s, p, o);
+	derp_assert_triple(s->str, p->str, o->str);
 	g_string_free(s, TRUE);
 	g_string_free(p, TRUE);
 	g_string_free(o, TRUE);
