@@ -70,10 +70,10 @@ static void handle_triple(void* user_data, raptor_statement* triple) {
 
 void start_plugin() {
 	prefix_map = g_hash_table_new_full(
-			g_str_hash,        // hash function
-			g_str_equal,       // comparator
-			derp_free_data,    // key destructor
-			derp_free_data);   // val destructor
+			g_str_hash,    // hash function
+			g_str_equal,   // comparator
+			free,          // key destructor
+			free);         // val destructor
 
 	// Fill prefix map
 	g_hash_table_insert(prefix_map, strdup("http://purl.org/dc/terms"), strdup("dc"));
@@ -107,14 +107,14 @@ void shutdown_plugin() {
 	g_hash_table_destroy(prefix_map);
 }
 
-static DerpPlugin plugin = {
+static DerpPluginDescriptor plugin = {
 	"Raptor",
 	start_plugin,
 	shutdown_plugin,
 	NULL
 };
 
-DerpPlugin* derp_init_plugin(void) {
+DerpPluginDescriptor* derp_init_plugin(void) {
 	return &plugin;
 }
 

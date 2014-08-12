@@ -4,7 +4,7 @@
 #include <glib.h>
 #include "derp.h"
 
-static DerpPlugin plugin;
+static DerpPluginDescriptor plugin;
 
 void start_plugin() {
 	// Add rule
@@ -21,8 +21,9 @@ void start_plugin() {
 			 T("BAR", "BAR", "BAR") ),
 		THEN ( T("BAZ", "BAZ", "BAZ")) );
 
-	derp_add_callback(&plugin, "test", IF(T("dc:NLM", "dc:modified", "?modified")));
-	derp_add_callback(&plugin, "test2", IF(T("BAZ", "BAZ", "BAZ")));
+	//derp_add_callback(&plugin, "test", IF(T("dc:NLM", "dc:modified", "?modified")));
+	//derp_add_callback(&plugin, "test2", IF(T("BAZ", "BAZ", "BAZ")));
+	//derp_add_callback(&plugin, "test2", IF(TF("BAZ", "BAZ", "?o", "o:B.*Z")));
 
 	// Check for fact
 	/*
@@ -48,14 +49,14 @@ void callback(gchar* rule, GHashTable* arguments) {
 	}
 }
 
-static DerpPlugin plugin = {
+static DerpPluginDescriptor plugin = {
 	"Test",
 	start_plugin,
 	NULL,
 	callback
 };
 
-DerpPlugin* derp_init_plugin(void) {
+DerpPluginDescriptor* derp_init_plugin(void) {
 	return &plugin;
 }
 

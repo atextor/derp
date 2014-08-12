@@ -26,9 +26,151 @@ static void *theEnv = NULL;
 // Maps plugin name to plugin struct
 GHashTable* plugins = NULL;
 
-EXPORT void derp_free_data(gpointer data) {
-	free(data);
+static void* DerpPlugin_ctor(void* _self, va_list* app) {
+	struct DerpPlugin* self = _self;
+	const char* file_name = va_arg(*app, const char*);
+
+	// Load shared object
+	DerpPluginDescriptor*(*derp_init_plugin)(void);
+	DerpPluginDescriptor* plugin_descriptor = NULL;
+	gchar* error = NULL;
+	void* handle;
+
+	handle = dlopen(file_name, RTLD_LAZY);
+	if (!handle) {
+		derp_log(DERP_LOG_ERROR, "%s", dlerror());
+		return NULL;
+	}
+
+	dlerror();
+
+	derp_init_plugin = (DerpPluginDescriptor*(*)(void))dlsym(handle, "derp_init_plugin");
+	error = dlerror();
+	if (error != NULL) {
+		derp_log(DERP_LOG_ERROR, "Error while loading plugin %s: %s", file_name, error);
+		return NULL;
+	}
+
+	plugin_descriptor = derp_init_plugin();
+	if (plugin_descriptor == NULL) {
+		derp_log(DERP_LOG_ERROR, "Error while loading plugin %s: Invalid plugin struct", file_name);
+	}
+
+	// Copy plugin descriptor info into plugin instance
+	self->file_name = malloc(strlen(file_name) + 1);
+	assert(self->file_name);
+	strcpy(self->file_name, file_name);
+	const char* name = plugin_descriptor->name;
+	self->name = malloc(strlen(name) + 1);
+	assert(self->name);
+	strcpy(self->name, name);
+	self->start_plugin = plugin_descriptor->start_plugin;
+	self->shutdown_plugin = plugin_descriptor->shutdown_plugin;
+	self->callback = plugin_descriptor->callback;
+
+	return self;
 }
+
+static void* DerpPlugin_dtor(void* _self) {
+	struct DerpPlugin* self = _self;
+	free(self->name);
+	free(self->file_name);
+	return self;
+}
+
+static const struct Class _DerpPlugin = {
+	.super = NULL,
+	.size = sizeof(struct DerpPlugin),
+	.ctor = DerpPlugin_ctor,
+	.dtor = DerpPlugin_dtor,
+	.clone = NULL,
+	.equals = NULL
+};
+
+const void* DerpPlugin = &_DerpPlugin;
+
+static void* DerpTriple_ctor(void* _self, va_list* app) {
+	struct DerpTriple* self = _self;
+	const char* s = va_arg(*app, const char*);
+	const char* p = va_arg(*app, const char*);
+	const char* o = va_arg(*app, const char*);
+	self->subject = malloc(strlen(s) + 1);
+	assert(self->subject);
+	self->predicate = malloc(strlen(p) + 1);
+	assert(self->predicate);
+	self->object = malloc(strlen(o) + 1);
+	assert(self->object);
+	strcpy(self->subject, s);
+	strcpy(self->predicate, p);
+	strcpy(self->object, o);
+
+	return self;
+}
+
+static void* DerpTriple_dtor(void* _self) {
+	struct DerpTriple* self = _self;
+	free(self->subject);
+	free(self->predicate);
+	free(self->object);
+	return self;
+}
+
+static const struct Class _DerpTriple = {
+	.super = NULL,
+	.size = sizeof(struct DerpTriple),
+	.ctor = DerpTriple_ctor,
+	.dtor = DerpTriple_dtor,
+	.clone = NULL,
+	.equals = NULL
+};
+
+EXPORT const void* DerpTriple = &_DerpTriple;
+
+static void* DerpRule_ctor(void* _self, va_list* app) {
+	struct DerpRule* self = _self;
+	const char* name = va_arg(*app, const char*);
+	self->name = malloc(strlen(name) + 1);
+	assert(self->name);
+	strcpy(self->name, name);
+	GSList_DerpTriple* head = va_arg(*app, GSList_DerpTriple*);
+	self->head = head;
+	GSList_DerpTriple* body = va_arg(*app, GSList_DerpTriple*);
+	self->body = body;
+
+	return self;
+}
+
+static void* DerpRule_dtor(void* _self) {
+	struct DerpRule* self = _self;
+	free(self->name);
+
+	struct DerpTriple* t;
+	for (GSList* node = self->head; node; node = node->next) {
+		t = (struct DerpTriple*)node->data;
+		delete(t);
+	}
+	g_slist_free(self->head);
+
+	for (GSList* node = self->body; node; node = node->next) {
+		t = (struct DerpTriple*)node->data;
+		delete(t);
+	}
+	g_slist_free(self->body);
+
+	return self;
+}
+
+static const struct Class _DerpRule = {
+	.super = NULL,
+	.size = sizeof(struct DerpRule),
+	.ctor = DerpRule_ctor,
+	.dtor = DerpRule_dtor,
+	.clone = NULL,
+	.equals = NULL
+};
+
+EXPORT const void* DerpRule = &_DerpRule;
+
 
 EXPORT void derp_log(derp_log_level level, char* fmt, ...) {
 	switch(level) {
@@ -53,46 +195,17 @@ EXPORT void derp_log(derp_log_level level, char* fmt, ...) {
 	putchar('\n');
 }
 
-DerpPlugin* load_plugin(gchar* filename) {
-	DerpPlugin*(*derp_init_plugin)(void);
-	DerpPlugin* plugin = NULL;
-	gchar* error = NULL;
-	void* handle;
-
-	handle = dlopen(filename, RTLD_LAZY);
-	if (!handle) {
-		derp_log(DERP_LOG_ERROR, "%s", dlerror());
-		return NULL;
-	}
-
-	dlerror();
-
-	derp_init_plugin = (DerpPlugin*(*)(void))dlsym(handle, "derp_init_plugin");
-	error = dlerror();
-	if (error != NULL) {
-		derp_log(DERP_LOG_ERROR, "Error while loading plugin %s: %s", filename, error);
-		return NULL;
-	}
-
-	plugin = derp_init_plugin();
-	if (plugin == NULL) {
-		derp_log(DERP_LOG_ERROR, "Error while loading plugin %s: Invalid plugin struct", filename);
-	}
-
-	return plugin;
-}
-
 GHashTable* load_plugins(GSList_String* plugins) {
 	GHashTable* result = g_hash_table_new(
 			g_str_hash,        // hash function
 			g_str_equal);      // comparator
 
 	gchar* plugin_filename;
-	DerpPlugin* plugin = NULL;
+	struct DerpPlugin* plugin = NULL;
 
 	for (GSList_String* node = plugins; node; node = node->next) {
 		plugin_filename = (gchar*)node->data;
-		plugin = load_plugin(plugin_filename);
+		plugin = new(DerpPlugin, plugin_filename);
 		if (plugin != NULL) {
 			g_hash_table_insert(result, plugin->name, plugin);
 		}
@@ -184,7 +297,7 @@ EXPORT GSList_String* derp_get_rule_definition(gchar* rulename) {
 	return NULL;
 }
 
-EXPORT gboolean derp_assert_rule(DerpRule* rule) {
+EXPORT gboolean derp_assert_rule(struct DerpRule* rule) {
 	if (g_slist_length(rule->head) == 0 ||
 			g_slist_length(rule->body) == 0 ||
 			rule->name == NULL) {
@@ -193,15 +306,34 @@ EXPORT gboolean derp_assert_rule(DerpRule* rule) {
 
 	GString* rule_assertion = g_string_sized_new(256);
 	g_string_append_printf(rule_assertion, "(defrule %s ", rule->name);
-	DerpTriple* triple;
+	struct DerpTriple* triple;
 	for (GSList_DerpTriple* h = rule->head; h; h = h->next) {
-		triple = (DerpTriple*)h->data;
-		g_string_append_printf(rule_assertion, "(triple %s %s %s)",
-				triple->subject, triple->predicate, triple->object);
+		triple = (struct DerpTriple*)h->data;
+		gchar* rule_filter = NULL;
+
+		/*
+		if (triple->filter != NULL) {
+			gchar* filter_copy = strdup(triple->filter);
+			gchar* sep = strchr(filter_copy, ':');
+			if (sep == NULL) {
+				derp_log(DERP_LOG_ERROR, "Error in triple filter: No separator found: %s", triple->filter);
+			} else {
+				gchar* expression = sep + 1;
+				sep = '\0';
+				gchar* variable = filter_copy;
+				// TODO append filter expr with expression and variable to rule_filter
+			}
+			free(filter_copy);
+		}
+		*/
+
+		g_string_append_printf(rule_assertion, "(triple %s %s %s%s)",
+				triple->subject, triple->predicate, triple->object,
+				rule_filter == NULL ? "" : rule_filter);
 	}
 	g_string_append(rule_assertion, " => (assert ");
 	for (GSList_DerpTriple* h = rule->body; h; h = h->next) {
-		triple = (DerpTriple*)h->data;
+		triple = (struct DerpTriple*)h->data;
 		g_string_append_printf(rule_assertion, "(triple %s %s %s)",
 				triple->subject, triple->predicate, triple->object);
 	}
@@ -210,26 +342,11 @@ EXPORT gboolean derp_assert_rule(DerpRule* rule) {
 	int result = derp_assert_generic(rule_assertion->str);
 	g_string_free(rule_assertion, TRUE);
 
-	derp_delete_rule(rule);
+	delete(rule);
 	return result;
 }
 
-EXPORT DerpTriple* derp_new_triple(gchar* subject, gchar* predicate, gchar* object) {
-	DerpTriple* t = malloc(sizeof(DerpTriple));
-	t->subject = strdup(subject);
-	t->predicate = strdup(predicate);
-	t->object = strdup(object);
-	return t;
-}
-
-EXPORT void derp_delete_triple(DerpTriple* t) {
-	free(t->subject);
-	free(t->predicate);
-	free(t->object);
-	free(t);
-}
-
-EXPORT GSList_DerpTriple* derp_new_triple_list(DerpTriple* triple, ...) {
+EXPORT GSList_DerpTriple* derp_new_triple_list(struct DerpTriple* triple, ...) {
 	GSList_DerpTriple* list = NULL;
 	GSList_DerpTriple* listptr = NULL;
 	list = g_slist_append(list, triple);
@@ -237,9 +354,9 @@ EXPORT GSList_DerpTriple* derp_new_triple_list(DerpTriple* triple, ...) {
 
 	va_list ap;
 	va_start(ap, triple);
-	DerpTriple* t = NULL;
+	struct DerpTriple* t = NULL;
 	while(TRUE) {
-		t = va_arg(ap, DerpTriple*);
+		t = va_arg(ap, struct DerpTriple*);
 		if (t == NULL) {
 			break;
 		}
@@ -250,31 +367,19 @@ EXPORT GSList_DerpTriple* derp_new_triple_list(DerpTriple* triple, ...) {
 }
 
 EXPORT void derp_delete_triple_list(GSList_DerpTriple* list) {
-	g_slist_free_full(list, (GDestroyNotify)derp_delete_triple);
+	for (GSList* node = list; node; node = node->next) {
+		delete(node);
+	}
+	g_slist_free(list);
 }
 
-EXPORT DerpRule* derp_new_rule(gchar* name, GSList_DerpTriple* head, GSList_DerpTriple* body) {
-	DerpRule* rule = malloc(sizeof(DerpRule));
-	rule->name = strdup(name);
-	rule->head = head;
-	rule->body = body;
-	return rule;
-}
-
-EXPORT void derp_delete_rule(DerpRule* rule) {
-	free(rule->name);
-	derp_delete_triple_list(rule->head);
-	derp_delete_triple_list(rule->body);
-	free(rule);
-}
-
-EXPORT gboolean derp_add_callback(DerpPlugin* callee, gchar* name, GSList_DerpTriple* head) {
+EXPORT gboolean derp_add_callback(struct DerpPlugin* callee, gchar* name, GSList_DerpTriple* head) {
 	GHashTable* variables = g_hash_table_new(g_str_hash, g_str_equal);
 	GString* assertion = g_string_sized_new(256);
 	g_string_append_printf(assertion, "(defrule %s ", name);
-	DerpTriple* triple;
+	struct DerpTriple* triple;
 	for (GSList_DerpTriple* h = head; h; h = h->next) {
-		triple = (DerpTriple*)h->data;
+		triple = (struct DerpTriple*)h->data;
 		g_string_append_printf(assertion, "(triple %s %s %s)",
 				triple->subject, triple->predicate, triple->object);
 		if (triple->subject[0] == '?') {
@@ -339,14 +444,16 @@ int router_exit_function(int exit_code) {
 void shutdown() {
 	// Shut down plugins
 	if (plugins != NULL) {
-		DerpPlugin* p;
+		struct DerpPlugin* p;
 		GList* plugin_list = g_hash_table_get_values(plugins);
 		for (GList* node = plugin_list; node; node = node->next) {
-			p = (DerpPlugin*)node->data;
+			p = (struct DerpPlugin*)node->data;
 			derp_log(DERP_LOG_DEBUG, "Stopping plugin: %s", p->name);
 			if (p->shutdown_plugin != NULL) {
 				p->shutdown_plugin();
 			}
+
+			delete(p);
 		}
 
 		g_list_free(plugin_list);
@@ -359,13 +466,22 @@ void shutdown() {
 	}
 }
 
+int filter(void* arg) {
+	int argc = RtnArgCount();
+
+	char* arg1 = RtnLexeme(1);
+	printf("Filter called. Argc: %d Arg[0]: %s\n", argc, arg1);
+
+	return TRUE;
+}
+
 int* rule_callback(void* arg) {
 	int argc = RtnArgCount();
 
 	char* plugin_name = RtnLexeme(1);
 	char* rule_name = RtnLexeme(2);
 
-	DerpPlugin* p = g_hash_table_lookup(plugins, plugin_name);
+	struct DerpPlugin* p = g_hash_table_lookup(plugins, plugin_name);
 	if (p == NULL) {
 		derp_log(DERP_LOG_ERROR, "Can't callback plugin %s: Unknown plugin", plugin_name);
 		return NULL;
@@ -379,7 +495,7 @@ int* rule_callback(void* arg) {
 	// Construct argument list from callback arguments if there are any
 	if (argc > 2) {
 		GHashTable* arguments = g_hash_table_new(g_str_hash, g_str_equal);
-		for (int i = 3; i <= argc; i+=2) {
+		for (int i = 3; i <= argc; i += 2) {
 			g_hash_table_insert(arguments, RtnLexeme(i), RtnLexeme(i + 1));
 		}
 
@@ -433,6 +549,11 @@ int main() {
 	//     see page 22 of CLIPS Advanced Programming Guide)
 	EnvDefineFunction2(theEnv, "rule_callback", 'v', PTIEF rule_callback, "rule_callback", "2*uss");
 
+
+	EnvDefineFunction2(theEnv, "filter", 'b', PTIEF filter, "filter", "**u");
+	derp_assert_generic("(defrule filtertest (triple FOO FOO ?o&:(filter ?o))  => (assert (triple FOO FOO FILTERED)))");
+
+
 	// Add I/O routers
 	int result = AddRouter(ROUTER_NAME, 0,
 			router_query_function,
@@ -447,15 +568,15 @@ int main() {
 
 	// Load Plugins
 	GSList_String* list = NULL;
-	list = g_slist_append(list, strdup("./libplugin1.so"));
-	list = g_slist_append(list, strdup("./libraptor.so"));
+	list = g_slist_append(list, "./libplugin1.so");
+	list = g_slist_append(list, "./libraptor.so");
 	plugins = load_plugins(list);
-	g_slist_free_full(list, derp_free_data);
+	g_slist_free(list);
 
-	DerpPlugin* p;
+	struct DerpPlugin* p;
 	GList* plugin_list = g_hash_table_get_values(plugins);
 	for (GList* node = plugin_list; node; node = node->next) {
-		p = (DerpPlugin*)node->data;
+		p = (struct DerpPlugin*)node->data;
 		derp_log(DERP_LOG_DEBUG, "Starting plugin: %s", p->name);
 		p->start_plugin();
 	}
@@ -467,8 +588,8 @@ int main() {
 	// Run rule engine
 	derp_assert_generic("(run)");
 
-	/*
 	// List facts
+	/*
 	GSList_String* facts = derp_get_facts();
 	for (GSList_String* node = facts; node; node = node->next) {
 		printf("fact %s", (char*)node->data);

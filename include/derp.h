@@ -2,16 +2,8 @@
 #define _DERP_H_
 
 #include <glib.h>
-
-#if defined _WIN32 || defined __CYGWIN__
-  #define EXPORT __declspec(dllexport)
-#else
-  #if __GNUC__ >= 4
-    #define EXPORT __attribute__ ((visibility ("default")))
-  #else
-    #define EXPORT
-  #endif
-#endif
+#include "oo.h"
+#include "visibility.h"
 
 // Typedefs for code readability
 typedef GSList GSList_DerpPlugin;
@@ -26,55 +18,67 @@ typedef enum {
 	DERP_LOG_DEBUG
 } derp_log_level;
 
-struct _DerpPlugin {
+// Plugin Descriptor is not a class
+struct _DerpPluginDescriptor {
 	gchar* name;
 	void (*start_plugin)(void);
 	void (*shutdown_plugin)(void);
 	void (*callback)(gchar* rule, GHashTable* arguments);
 };
 
-typedef struct _DerpPlugin DerpPlugin;
+typedef struct _DerpPluginDescriptor DerpPluginDescriptor;
 
-struct _DerpTriple {
+// All the following types are classes
+struct DerpPlugin {
+	const void* class;
+	gchar* name;
+	gchar* file_name;
+	void (*start_plugin)(void);
+	void (*shutdown_plugin)(void);
+	void (*callback)(gchar* rule, GHashTable* arguments);
+};
+
+extern const void* DerpPlugin;
+
+struct DerpTriple {
+	const void* class;
 	gchar* subject;
 	gchar* predicate;
 	gchar* object;
 };
 
-typedef struct _DerpTriple DerpTriple;
+extern const void* DerpTriple;
 
-struct _DerpRule {
+struct DerpRule {
+	const void* class;
 	gchar* name;
 	GSList_DerpTriple* head;
 	GSList_DerpTriple* body;
 };
 
-typedef struct _DerpRule DerpRule;
+extern const void* DerpRule;
 
 // Derp functions
 void derp_free_data(gpointer data);
 gboolean derp_assert_fact(gchar* fact);
 gboolean derp_assert_generic(gchar* input);
 gboolean derp_assert_triple(gchar* subject, gchar* predicate, gchar* object);
-gboolean derp_assert_rule(DerpRule* rule);
-gboolean derp_add_callback(DerpPlugin* callee, gchar* name, GSList_DerpTriple* head);
+gboolean derp_assert_rule(struct DerpRule* rule);
+gboolean derp_add_callback(struct DerpPlugin* callee, gchar* name, GSList_DerpTriple* head);
 int derp_get_facts_size();
 GSList_String* derp_get_facts();
 GSList_String* derp_get_rules();
 GSList_String* derp_get_rule_definition(gchar* rulename);
-DerpTriple* derp_new_triple(gchar* subject, gchar* predicate, gchar* object);
-void derp_delete_triple(DerpTriple* t);
-GSList_DerpTriple* derp_new_triple_list(DerpTriple* triple, ...);
+GSList_DerpTriple* derp_new_triple_list(struct DerpTriple* triple, ...);
 void derp_delete_triple_list(GSList_DerpTriple* list);
-DerpRule* derp_new_rule(gchar* name, GSList_DerpTriple* head, GSList_DerpTriple* body);
-void derp_delete_rule(DerpRule* rule);
 void derp_log(derp_log_level level, char* fmt, ...);
 
 // Rule definition macros
 #define IF(...) derp_new_triple_list(__VA_ARGS__, NULL)
-#define T(...) derp_new_triple(__VA_ARGS__)
+#define T(s,p,o) new(DerpTriple,s,p,o,NULL)
+#define TF(s,p,o,f) derp_new_triple(s,p,o,p)
 #define THEN(...) derp_new_triple_list(__VA_ARGS__, NULL)
-#define ADD_RULE(a,b,c) derp_assert_rule(derp_new_rule(a,b,c))
+#define ADD_RULE(a,b,c) derp_assert_rule(new(DerpRule,a,b,c))
 
 
 #endif
