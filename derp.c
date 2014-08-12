@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <dlfcn.h>
 #include <glib.h>
 #include <string.h>
 #include <assert.h>
@@ -11,6 +10,7 @@
 #include <unistd.h>
 
 #include "clips.h"
+#include "visibility.h"
 #include "derp.h"
 
 #define BUFSIZE 256
@@ -25,152 +25,6 @@ static void *theEnv = NULL;
 
 // Maps plugin name to plugin struct
 GHashTable* plugins = NULL;
-
-static void* DerpPlugin_ctor(void* _self, va_list* app) {
-	struct DerpPlugin* self = _self;
-	const char* file_name = va_arg(*app, const char*);
-
-	// Load shared object
-	DerpPluginDescriptor*(*derp_init_plugin)(void);
-	DerpPluginDescriptor* plugin_descriptor = NULL;
-	gchar* error = NULL;
-	void* handle;
-
-	handle = dlopen(file_name, RTLD_LAZY);
-	if (!handle) {
-		derp_log(DERP_LOG_ERROR, "%s", dlerror());
-		return NULL;
-	}
-
-	dlerror();
-
-	derp_init_plugin = (DerpPluginDescriptor*(*)(void))dlsym(handle, "derp_init_plugin");
-	error = dlerror();
-	if (error != NULL) {
-		derp_log(DERP_LOG_ERROR, "Error while loading plugin %s: %s", file_name, error);
-		return NULL;
-	}
-
-	plugin_descriptor = derp_init_plugin();
-	if (plugin_descriptor == NULL) {
-		derp_log(DERP_LOG_ERROR, "Error while loading plugin %s: Invalid plugin struct", file_name);
-	}
-
-	// Copy plugin descriptor info into plugin instance
-	self->file_name = malloc(strlen(file_name) + 1);
-	assert(self->file_name);
-	strcpy(self->file_name, file_name);
-	const char* name = plugin_descriptor->name;
-	self->name = malloc(strlen(name) + 1);
-	assert(self->name);
-	strcpy(self->name, name);
-	self->start_plugin = plugin_descriptor->start_plugin;
-	self->shutdown_plugin = plugin_descriptor->shutdown_plugin;
-	self->callback = plugin_descriptor->callback;
-
-	return self;
-}
-
-static void* DerpPlugin_dtor(void* _self) {
-	struct DerpPlugin* self = _self;
-	free(self->name);
-	free(self->file_name);
-	return self;
-}
-
-static const struct Class _DerpPlugin = {
-	.super = NULL,
-	.size = sizeof(struct DerpPlugin),
-	.ctor = DerpPlugin_ctor,
-	.dtor = DerpPlugin_dtor,
-	.clone = NULL,
-	.equals = NULL
-};
-
-const void* DerpPlugin = &_DerpPlugin;
-
-static void* DerpTriple_ctor(void* _self, va_list* app) {
-	struct DerpTriple* self = _self;
-	const char* s = va_arg(*app, const char*);
-	const char* p = va_arg(*app, const char*);
-	const char* o = va_arg(*app, const char*);
-	self->subject = malloc(strlen(s) + 1);
-	assert(self->subject);
-	self->predicate = malloc(strlen(p) + 1);
-	assert(self->predicate);
-	self->object = malloc(strlen(o) + 1);
-	assert(self->object);
-	strcpy(self->subject, s);
-	strcpy(self->predicate, p);
-	strcpy(self->object, o);
-
-	return self;
-}
-
-static void* DerpTriple_dtor(void* _self) {
-	struct DerpTriple* self = _self;
-	free(self->subject);
-	free(self->predicate);
-	free(self->object);
-	return self;
-}
-
-static const struct Class _DerpTriple = {
-	.super = NULL,
-	.size = sizeof(struct DerpTriple),
-	.ctor = DerpTriple_ctor,
-	.dtor = DerpTriple_dtor,
-	.clone = NULL,
-	.equals = NULL
-};
-
-EXPORT const void* DerpTriple = &_DerpTriple;
-
-static void* DerpRule_ctor(void* _self, va_list* app) {
-	struct DerpRule* self = _self;
-	const char* name = va_arg(*app, const char*);
-	self->name = malloc(strlen(name) + 1);
-	assert(self->name);
-	strcpy(self->name, name);
-	GSList_DerpTriple* head = va_arg(*app, GSList_DerpTriple*);
-	self->head = head;
-	GSList_DerpTriple* body = va_arg(*app, GSList_DerpTriple*);
-	self->body = body;
-
-	return self;
-}
-
-static void* DerpRule_dtor(void* _self) {
-	struct DerpRule* self = _self;
-	free(self->name);
-
-	struct DerpTriple* t;
-	for (GSList* node = self->head; node; node = node->next) {
-		t = (struct DerpTriple*)node->data;
-		delete(t);
-	}
-	g_slist_free(self->head);
-
-	for (GSList* node = self->body; node; node = node->next) {
-		t = (struct DerpTriple*)node->data;
-		delete(t);
-	}
-	g_slist_free(self->body);
-
-	return self;
-}
-
-static const struct Class _DerpRule = {
-	.super = NULL,
-	.size = sizeof(struct DerpRule),
-	.ctor = DerpRule_ctor,
-	.dtor = DerpRule_dtor,
-	.clone = NULL,
-	.equals = NULL
-};
-
-EXPORT const void* DerpRule = &_DerpRule;
-
 
 EXPORT void derp_log(derp_log_level level, char* fmt, ...) {
 	switch(level) {

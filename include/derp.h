@@ -3,12 +3,12 @@
 
 #include <glib.h>
 #include "oo.h"
-#include "visibility.h"
+#include "plugin.h"
+#include "triple.h"
+#include "rule.h"
 
 // Typedefs for code readability
-typedef GSList GSList_DerpPlugin;
 typedef GSList GSList_String;
-typedef GSList GSList_DerpTriple;
 
 // Derp types
 typedef enum {
@@ -27,36 +27,6 @@ struct _DerpPluginDescriptor {
 };
 
 typedef struct _DerpPluginDescriptor DerpPluginDescriptor;
-
-// All the following types are classes
-struct DerpPlugin {
-	const void* class;
-	gchar* name;
-	gchar* file_name;
-	void (*start_plugin)(void);
-	void (*shutdown_plugin)(void);
-	void (*callback)(gchar* rule, GHashTable* arguments);
-};
-
-extern const void* DerpPlugin;
-
-struct DerpTriple {
-	const void* class;
-	gchar* subject;
-	gchar* predicate;
-	gchar* object;
-};
-
-extern const void* DerpTriple;
-
-struct DerpRule {
-	const void* class;
-	gchar* name;
-	GSList_DerpTriple* head;
-	GSList_DerpTriple* body;
-};
-
-extern const void* DerpRule;
 
 // Derp functions
 void derp_free_data(gpointer data);
