@@ -24,8 +24,10 @@ static void* DerpAssertion_dtor(void* _self) {
 static char* DerpAssertion_tostring(void* _self) {
 	struct DerpAssertion* self = _self;
 	GString* string = g_string_new(NULL);
+	const struct Object* o = (const struct Object*)self->triple;
+	const struct Class* c = (const struct Class*)o->class;
 	g_string_append_printf(string, "(assert %s)",
-		((const struct Class*)self->triple->class)->tostring(self->triple));
+		c->tostring(self->triple));
 	gchar* result = g_string_free(string, FALSE);
 	assert(result);
 

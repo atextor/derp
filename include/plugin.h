@@ -7,7 +7,7 @@
 typedef GSList GSList_DerpPlugin;
 
 struct DerpPlugin {
-	const struct Class* class;
+	const struct Object _;
 	gchar* name;
 	gchar* file_name;
 	void (*start_plugin)(void);

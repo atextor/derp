@@ -2,11 +2,12 @@
 #define _TRIPLE_H_
 
 #include <glib.h>
+#include "oo.h"
 
 typedef GSList GSList_DerpTriple;
 
 struct DerpTriple {
-	const void* class;
+	const struct Object _;
 	gchar* subject;
 	gchar* predicate;
 	gchar* object;
