@@ -2,13 +2,14 @@
 #define _RULE_H_
 
 #include <glib.h>
+#include "oo.h"
 #include "triple.h"
 
 struct DerpRule {
-	const void* class;
+	const struct Class* class;
 	gchar* name;
-	GSList_DerpTriple* head;
-	GSList_DerpTriple* body;
+	GSList* head;
+	GSList* body;
 };
 
 extern const void* DerpRule;

@@ -14,4 +14,11 @@ struct DerpTriple {
 
 extern const void* DerpTriple;
 
+struct DerpTripleWithFilter {
+	const struct DerpTriple _;
+	gchar* filter;
+};
+
+extern const void* DerpTripleWithFilter;
+
 #endif

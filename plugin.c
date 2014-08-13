@@ -59,7 +59,6 @@ static void* DerpPlugin_dtor(void* _self) {
 }
 
 static const struct Class _DerpPlugin = {
-	.super = NULL,
 	.size = sizeof(struct DerpPlugin),
 	.ctor = DerpPlugin_ctor,
 	.dtor = DerpPlugin_dtor,

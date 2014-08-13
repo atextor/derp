@@ -387,7 +387,10 @@ int main() {
 	sa.sa_handler = sighandler;
 	sa.sa_flags = 0;
 	sa.sa_mask = sigset;
-	sigaction(SIGSEGV, &sa, NULL);
+	if (sigaction(SIGSEGV, &sa, NULL) == -1 ||
+		sigaction(SIGTERM, &sa, NULL)) {
+		derp_log(DERP_LOG_ERROR, "Could not set up signal handler");
+	}
 
 	// Initialize rule engine
 	theEnv = CreateEnvironment();

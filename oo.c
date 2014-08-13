@@ -1,7 +1,49 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
 #include "oo.h"
 #include "visibility.h"
+
+static void* Object_ctor(void* _self, va_list* app) {
+	struct Object* self = _self;
+	return self;
+}
+
+static void* Object_dtor(void* _self) {
+	struct Object* self = _self;
+	return self;
+}
+
+static void* Object_clone(void* _self) {
+	struct Object* self = _self;
+	struct Object* copy = new(Object);
+	memcpy(copy, self, ((const struct Class*)self->class)->size);
+	return copy;
+}
+
+static bool Object_equals(void* _self, void* _other) {
+	return _self == _other;
+}
+
+static char* Object_tostring(void* _self) {
+	struct Object* self = _self;
+	char* string = malloc(25);
+	assert(string);
+	snprintf(string, 25, "Object(%p)", self);
+	return string;
+}
+
+static const struct Class _Object = {
+	.size = sizeof(struct Object),
+	.ctor = Object_ctor,
+	.dtor = Object_dtor,
+	.clone = Object_clone,
+	.equals = Object_equals,
+	.tostring = Object_tostring
+};
+
+EXPORT const void* Object = &_Object;
 
 EXPORT void* new(const void* _class, ...) {
 	const struct Class* class = _class;
@@ -26,8 +68,3 @@ EXPORT void delete(void* self) {
 	free(self);
 }
 
-EXPORT bool equals(const void* self, const void* other) {
-	const struct Class* const* cp = self;
-	assert(self && *cp && (*cp)->equals);
-	return (*cp)->equals(self, other);
-}

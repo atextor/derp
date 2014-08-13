@@ -11,9 +11,9 @@ static void* DerpRule_ctor(void* _self, va_list* app) {
 	self->name = malloc(strlen(name) + 1);
 	assert(self->name);
 	strcpy(self->name, name);
-	GSList_DerpTriple* head = va_arg(*app, GSList_DerpTriple*);
+	GSList* head = va_arg(*app, GSList*);
 	self->head = head;
-	GSList_DerpTriple* body = va_arg(*app, GSList_DerpTriple*);
+	GSList* body = va_arg(*app, GSList*);
 	self->body = body;
 
 	return self;
@@ -23,16 +23,16 @@ static void* DerpRule_dtor(void* _self) {
 	struct DerpRule* self = _self;
 	free(self->name);
 
-	struct DerpTriple* t;
+	struct Object* o;
 	for (GSList* node = self->head; node; node = node->next) {
-		t = (struct DerpTriple*)node->data;
-		delete(t);
+		o = (struct Object*)node->data;
+		delete(o);
 	}
 	g_slist_free(self->head);
 
 	for (GSList* node = self->body; node; node = node->next) {
-		t = (struct DerpTriple*)node->data;
-		delete(t);
+		o = (struct Object*)node->data;
+		delete(o);
 	}
 	g_slist_free(self->body);
 
@@ -40,7 +40,6 @@ static void* DerpRule_dtor(void* _self) {
 }
 
 static const struct Class _DerpRule = {
-	.super = NULL,
 	.size = sizeof(struct DerpRule),
 	.ctor = DerpRule_ctor,
 	.dtor = DerpRule_dtor,
