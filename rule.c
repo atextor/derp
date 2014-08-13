@@ -11,6 +11,7 @@ static void* DerpRule_ctor(void* _self, va_list* app) {
 	self->name = malloc(strlen(name) + 1);
 	assert(self->name);
 	strcpy(self->name, name);
+	// Skip validation of lists
 	GSList* head = va_arg(*app, GSList*);
 	self->head = head;
 	GSList* body = va_arg(*app, GSList*);
