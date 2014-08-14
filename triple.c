@@ -45,6 +45,7 @@ static char* DerpTriple_tostring(void* _self) {
 
 static const struct Class _DerpTriple = {
 	.size = sizeof(struct DerpTriple),
+	.name = "DerpTriple",
 	.ctor = DerpTriple_ctor,
 	.dtor = DerpTriple_dtor,
 	.clone = NULL,
@@ -74,8 +75,12 @@ static char* DerpTripleWithFilter_tostring(void* _self) {
 	struct DerpTripleWithFilter* self = _self;
 	struct DerpTriple* triple = (struct DerpTriple*)self;
 	GString* string = g_string_new(NULL);
-	g_string_append_printf(string, "(triple %s %s %s&:(filter %s))",
-		triple->subject, triple->predicate, triple->object, self->filter);
+	char spo_selector = triple->subject[0] == '?' ? 's' :
+		(triple->predicate[0] == '?' ? 'p' :
+		 (triple->object[0] == '?' ? 'o' : ' '));
+	g_string_append_printf(string, "(triple %s %s %s&:(filter %s %s %s \"%c\" \"%s\"))",
+		triple->subject, triple->predicate, triple->object,
+		triple->subject, triple->predicate, triple->object, spo_selector, self->filter);
 	gchar* result = g_string_free(string, FALSE);
 	assert(result);
 
@@ -84,6 +89,7 @@ static char* DerpTripleWithFilter_tostring(void* _self) {
 
 static const struct Class _DerpTripleWithFilter = {
 	.size = sizeof(struct DerpTripleWithFilter),
+	.name = "DerpTripleWithFilter",
 	.ctor = DerpTripleWithFilter_ctor,
 	.dtor = DerpTripleWithFilter_dtor,
 	.clone = NULL,

@@ -6,6 +6,7 @@
 
 struct Class {
 	size_t size;
+	char* name;
 	void* (*ctor)(void* self, va_list* app);
 	void* (*dtor)(void* self);
 	void* (*clone)(void* self);

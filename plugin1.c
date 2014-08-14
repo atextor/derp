@@ -10,16 +10,24 @@ void start_plugin() {
 	// Add rule
 	ADD_RULE("foo",
 		IF( T("dc:NLM", "dc:modified", "\"2008-01-14\"") ),
-		THEN ( T("FOO", "FOO", "FOO")) );
+		THEN ( ASSERT("FOO", "FOO", "FOO")) );
 
 	ADD_RULE("bar",
 		IF( T("dc:NLM", "dc:modified", "\"2008-01-14\"") ),
-		THEN ( T("BAR", "BAR", "BAR") ));
+		THEN ( ASSERT("BAR", "BAR", "BAR") ));
 
 	ADD_RULE("baz",
 		IF ( T("FOO", "FOO", "FOO"),
 			 T("BAR", "BAR", "BAR") ),
-		THEN ( T("BAZ", "BAZ", "BAZ")) );
+		THEN ( ASSERT("BAZ", "BAZ", "BAZ")) );
+
+	ADD_RULE("filtertest",
+		IF ( TF("BAZ", "BAZ", "?o", "B.*Z") ),
+		THEN ( ASSERT("BAZ", "did", "fire")) );
+
+
+	//derp_assert_generic("(defrule filtertest (triple FOO FOO ?o&:(filter ?o))  => (assert (triple FOO FOO FILTERED)))");
+
 
 	//derp_add_callback(&plugin, "test", IF(T("dc:NLM", "dc:modified", "?modified")));
 	//derp_add_callback(&plugin, "test2", IF(T("BAZ", "BAZ", "BAZ")));

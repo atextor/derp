@@ -16,7 +16,7 @@ static void* DerpRetraction_ctor(void* _self, va_list* app) {
 
 static void* DerpRetraction_dtor(void* _self) {
 	struct DerpRetraction* self = _self;
-	free(self->triple);
+	delete(self->triple);
 
 	return self;
 }
@@ -26,8 +26,9 @@ static char* DerpRetraction_tostring(void* _self) {
 	GString* string = g_string_new(NULL);
 	const struct Object* o = (const struct Object*)self->triple;
 	const struct Class* c = (const struct Class*)o->class;
-	g_string_append_printf(string, "(retract %s)",
-		c->tostring(self->triple));
+	char* str = c->tostring(self->triple);
+	g_string_append_printf(string, "(retract %s)", str);
+	free(str);
 	gchar* result = g_string_free(string, FALSE);
 	assert(result);
 
@@ -36,6 +37,7 @@ static char* DerpRetraction_tostring(void* _self) {
 
 static const struct Class _DerpRetraction = {
 	.size = sizeof(struct DerpRetraction),
+	.name = "DerpRetraction",
 	.ctor = DerpRetraction_ctor,
 	.dtor = DerpRetraction_dtor,
 	.clone = NULL,

@@ -7,6 +7,7 @@
 #include "rule.h"
 #include "assertion.h"
 #include "retraction.h"
+#include "derp.h"
 
 static void* DerpRule_ctor(void* _self, va_list* app) {
 	struct DerpRule* self = _self;
@@ -14,11 +15,12 @@ static void* DerpRule_ctor(void* _self, va_list* app) {
 	self->name = malloc(strlen(name) + 1);
 	assert(self->name);
 	strcpy(self->name, name);
-	// Skip validation of lists
 	DerpRule_HeadList* head = va_arg(*app, GSList*);
 	self->head = head;
+	assert(self->head);
 	DerpRule_BodyList* body = va_arg(*app, GSList*);
 	self->body = body;
+	assert(self->body);
 
 	return self;
 }
@@ -43,24 +45,84 @@ static void* DerpRule_dtor(void* _self) {
 	return self;
 }
 
+static char* DerpRule_tostring(void* _self) {
+	struct DerpRule* self = _self;
+
+	GString* rule_assertion = g_string_new(NULL);
+	g_string_append_printf(rule_assertion, "(defrule %s ", self->name);
+
+	struct Object* o;
+	struct Class* c;
+	gchar* item;
+
+	for (DerpRule_HeadList* h = self->head; h; h = h->next) {
+		o = (struct Object*)h->data;
+		c = (struct Class*)o->class;
+		item = c->tostring(o);
+		if (!item) {
+			g_string_free(rule_assertion, TRUE);
+			return NULL;
+		}
+		g_string_append(rule_assertion, item);
+		free(item);
+	}
+
+	g_string_append(rule_assertion, " => ");
+
+	for (DerpRule_BodyList* h = self->body; h; h = h->next) {
+		o = (struct Object*)h->data;
+		c = (struct Class*)o->class;
+		item = c->tostring(o);
+		if (!item) {
+			g_string_free(rule_assertion, TRUE);
+			return NULL;
+		}
+		g_string_append(rule_assertion, item);
+		free(item);
+	}
+
+	g_string_append(rule_assertion, ")");
+	char* result = g_string_free(rule_assertion, FALSE);
+
+	return result;
+}
+
 static const struct Class _DerpRule = {
 	.size = sizeof(struct DerpRule),
+	.name = "DerpRule",
 	.ctor = DerpRule_ctor,
 	.dtor = DerpRule_dtor,
 	.clone = NULL,
-	.equals = NULL
+	.equals = NULL,
+	.tostring = DerpRule_tostring
 };
 
 EXPORT const void* DerpRule = &_DerpRule;
 
 static bool is_valid_head_item(void* item) {
 	const struct Class* class = ((struct Object*)item)->class;
-	return class == DerpTriple || class == DerpTripleWithFilter;
+	bool result = class == DerpTriple || class == DerpTripleWithFilter;
+	if (!result) {
+		struct Object* o = (struct Object*)item;
+		struct Class* c = (struct Class*)o->class;
+		char* str = c->tostring(item);
+		derp_log(DERP_LOG_ERROR, "Item is no valid rule head item: %s", str);
+		free(str);
+	}
+	return result;
 }
 
 static bool is_valid_body_item(void* item) {
 	const struct Class* class = ((struct Object*)item)->class;
-	return class == DerpAssertion || class == DerpRetraction;
+	bool result = class == DerpAssertion || class == DerpRetraction;
+	if (!result) {
+		struct Object* o = (struct Object*)item;
+		struct Class* c = (struct Class*)o->class;
+		char* str = c->tostring(item);
+		derp_log(DERP_LOG_ERROR, "Item is no valid rule body item: %s", str);
+		free(str);
+	}
+	return result;
 }
 
 static GSList* build_item_list(void* item, va_list ap, bool (*validator)(void*)) {
@@ -72,7 +134,7 @@ static GSList* build_item_list(void* item, va_list ap, bool (*validator)(void*))
 	list = g_slist_append(list, item);
 	listptr = list;
 
-	while (TRUE) {
+	while(TRUE) {
 		void* o = va_arg(ap, void*);
 		if (o == NULL) {
 			break;

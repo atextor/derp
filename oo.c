@@ -28,14 +28,16 @@ static bool Object_equals(void* _self, void* _other) {
 
 static char* Object_tostring(void* _self) {
 	struct Object* self = _self;
+	struct Class* class = (struct Class*)self->class;
 	char* string = malloc(25);
 	assert(string);
-	snprintf(string, 25, "Object(%p)", self);
+	snprintf(string, 25, "%s(%p)", class->name, self);
 	return string;
 }
 
 static const struct Class _Object = {
 	.size = sizeof(struct Object),
+	.name = "Object",
 	.ctor = Object_ctor,
 	.dtor = Object_dtor,
 	.clone = Object_clone,

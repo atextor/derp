@@ -3,6 +3,7 @@
 #include <glib.h>
 #include <string.h>
 #include <assert.h>
+#include <regex.h>
 
 #include <sys/types.h>
 #include <signal.h>
@@ -152,50 +153,9 @@ EXPORT GSList_String* derp_get_rule_definition(gchar* rulename) {
 }
 
 EXPORT gboolean derp_assert_rule(struct DerpRule* rule) {
-	if (g_slist_length(rule->head) == 0 ||
-			g_slist_length(rule->body) == 0 ||
-			rule->name == NULL) {
-		return FALSE;
-	}
-
-	GString* rule_assertion = g_string_sized_new(256);
-	g_string_append_printf(rule_assertion, "(defrule %s ", rule->name);
-	struct DerpTriple* triple;
-	for (GSList_DerpTriple* h = rule->head; h; h = h->next) {
-		triple = (struct DerpTriple*)h->data;
-		gchar* rule_filter = NULL;
-
-		/*
-		if (triple->filter != NULL) {
-			gchar* filter_copy = strdup(triple->filter);
-			gchar* sep = strchr(filter_copy, ':');
-			if (sep == NULL) {
-				derp_log(DERP_LOG_ERROR, "Error in triple filter: No separator found: %s", triple->filter);
-			} else {
-				gchar* expression = sep + 1;
-				sep = '\0';
-				gchar* variable = filter_copy;
-				// TODO append filter expr with expression and variable to rule_filter
-			}
-			free(filter_copy);
-		}
-		*/
-
-		g_string_append_printf(rule_assertion, "(triple %s %s %s%s)",
-				triple->subject, triple->predicate, triple->object,
-				rule_filter == NULL ? "" : rule_filter);
-	}
-	g_string_append(rule_assertion, " => (assert ");
-	for (GSList_DerpTriple* h = rule->body; h; h = h->next) {
-		triple = (struct DerpTriple*)h->data;
-		g_string_append_printf(rule_assertion, "(triple %s %s %s)",
-				triple->subject, triple->predicate, triple->object);
-	}
-	g_string_append(rule_assertion, "))");
-
-	int result = derp_assert_generic(rule_assertion->str);
-	g_string_free(rule_assertion, TRUE);
-
+	gchar* str = ((struct Class*)DerpRule)->tostring(rule);
+	int result = derp_assert_generic(str);
+	free(str);
 	delete(rule);
 	return result;
 }
@@ -321,12 +281,40 @@ void shutdown() {
 }
 
 int filter(void* arg) {
-	int argc = RtnArgCount();
+	char* s = RtnLexeme(1);
+	char* p = RtnLexeme(2);
+	char* o = RtnLexeme(3);
+	char spo_selector = RtnLexeme(4)[0];
+	char* filter = RtnLexeme(5);
 
-	char* arg1 = RtnLexeme(1);
-	printf("Filter called. Argc: %d Arg[0]: %s\n", argc, arg1);
+	regex_t regex;
+	int reti;
+	char msgbuf[100];
 
-	return TRUE;
+	char* target = spo_selector == 's' ? s : (spo_selector == 'p' ? p : (spo_selector == 'o' ? o : NULL));
+	if (!target) {
+		return FALSE;
+	}
+
+	reti = regcomp(&regex, filter, 0);
+	if (reti) {
+		derp_log(DERP_LOG_ERROR, "Invalid regular expression in rule triple filter");
+		return FALSE;
+	}
+
+	reti = regexec(&regex, target, 0, NULL, 0);
+	if (!reti) {
+		regfree(&regex);
+		return TRUE;
+	} else if (reti == REG_NOMATCH) {
+		regfree(&regex);
+		return FALSE;
+	} else {
+		regerror(reti, &regex, msgbuf, sizeof(msgbuf));
+		derp_log(DERP_LOG_ERROR, "Regex match failed in rule triple filter");
+		regfree(&regex);
+		return FALSE;
+	}
 }
 
 int* rule_callback(void* arg) {
@@ -406,10 +394,8 @@ int main() {
 	//     see page 22 of CLIPS Advanced Programming Guide)
 	EnvDefineFunction2(theEnv, "rule_callback", 'v', PTIEF rule_callback, "rule_callback", "2*uss");
 
-
-	EnvDefineFunction2(theEnv, "filter", 'b', PTIEF filter, "filter", "**u");
-	derp_assert_generic("(defrule filtertest (triple FOO FOO ?o&:(filter ?o))  => (assert (triple FOO FOO FILTERED)))");
-
+	// Register filter function
+	EnvDefineFunction2(theEnv, "filter", 'b', PTIEF filter, "filter", "55uuuuss");
 
 	// Add I/O routers
 	int result = AddRouter(ROUTER_NAME, 0,
@@ -445,13 +431,13 @@ int main() {
 	// Run rule engine
 	derp_assert_generic("(run)");
 
-	// List facts
 	/*
+	// List facts
 	GSList_String* facts = derp_get_facts();
 	for (GSList_String* node = facts; node; node = node->next) {
 		printf("fact %s", (char*)node->data);
 	}
-	g_slist_free_full(facts, derp_free_data);
+	g_slist_free_full(facts, free);
 	*/
 
 	shutdown();
