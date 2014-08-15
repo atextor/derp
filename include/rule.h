@@ -27,6 +27,8 @@ DerpRule_BodyList* derp_new_body_list(void* item, ...);
 #define T(s,p,o) new(DerpTriple,s,p,o)
 #define TF(s,p,o,f) new(DerpTripleWithFilter,s,p,o,f)
 #define ASSERT(s,p,o) new(DerpAssertion,new(DerpTriple,s,p,o))
+#define RETRACT(s,p,o) new(DerpRetraction,new(DerpTriple,s,p,o))
+#define CALLBACK(callee,...) new(DerpAction,callee,__VA_ARGS__,NULL)
 #define ADD_RULE(name,head,body) derp_assert_rule(RULE(name,head,body))
 
 #endif

@@ -25,13 +25,9 @@ void start_plugin(struct DerpPlugin* self) {
 		IF ( TF("BAZ", "BAZ", "?o", "B.*Z") ),
 		THEN ( ASSERT("BAZ", "did", "fire")) );
 
-
-	//derp_assert_generic("(defrule filtertest (triple FOO FOO ?o&:(filter ?o))  => (assert (triple FOO FOO FILTERED)))");
-
-
-	//derp_add_callback(&plugin, "test", IF(T("dc:NLM", "dc:modified", "?modified")));
-	//derp_add_callback(&plugin, "test2", IF(T("BAZ", "BAZ", "BAZ")));
-	//derp_add_callback(&plugin, "test2", IF(TF("BAZ", "BAZ", "?o", "o:B.*Z")));
+	ADD_RULE("callbacktest",
+		IF ( T("FOO", "FOO", "?foo") ),
+		THEN ( CALLBACK(self, "?foo" )) );
 
 	// Check for fact
 	/*
@@ -52,8 +48,8 @@ void start_plugin(struct DerpPlugin* self) {
 
 void callback(gchar* rule, GHashTable* arguments) {
 	printf("Callback received for rule %s\n", rule);
-	if (!g_strcmp0(rule, "test")) {
-		printf("Bound argument is %s\n", (char*)g_hash_table_lookup(arguments, "modified"));
+	if (!g_strcmp0(rule, "callbacktest")) {
+		printf("Bound argument is %s\n", (char*)g_hash_table_lookup(arguments, "foo"));
 	}
 }
 

@@ -187,46 +187,6 @@ EXPORT void derp_delete_triple_list(GSList_DerpTriple* list) {
 	g_slist_free(list);
 }
 
-EXPORT gboolean derp_add_callback(struct DerpPlugin* callee, gchar* name, GSList_DerpTriple* head) {
-	GHashTable* variables = g_hash_table_new(g_str_hash, g_str_equal);
-	GString* assertion = g_string_sized_new(256);
-	g_string_append_printf(assertion, "(defrule %s ", name);
-	struct DerpTriple* triple;
-	for (GSList_DerpTriple* h = head; h; h = h->next) {
-		triple = (struct DerpTriple*)h->data;
-		g_string_append_printf(assertion, "(triple %s %s %s)",
-				triple->subject, triple->predicate, triple->object);
-		if (triple->subject[0] == '?') {
-			g_hash_table_insert(variables, triple->subject, triple->subject);
-		}
-		if (triple->predicate[0] == '?') {
-			g_hash_table_insert(variables, triple->predicate, triple->predicate);
-		}
-		if (triple->object[0] == '?') {
-			g_hash_table_insert(variables, triple->object, triple->object);
-		}
-	}
-	g_string_append_printf(assertion, " => (rule_callback \"%s\" \"%s\" ", callee->name, name);
-
-	// Append list of variable names to assertion, so that callback function
-	// can receive the bound values
-	GList* variable_list = g_hash_table_get_keys(variables);
-	gchar* var;
-	for (GList* node = variable_list; node; node = node->next) {
-			var = (gchar*)node->data;
-			g_string_append_printf(assertion, "\"%s\" %s ", var + 1, var);
-	}
-	g_list_free(variable_list);
-	g_hash_table_unref(variables);
-	g_string_append(assertion, "))");
-
-	int result = derp_assert_generic(assertion->str);
-	g_string_free(assertion, TRUE);
-	derp_delete_triple_list(head);
-
-	return result;
-}
-
 static void router_buffer_clear() {
 	memset(router_buffer, 0, ROUTER_BUFFER_SIZE);
 	router_buffer_filled = 0;

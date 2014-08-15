@@ -2,15 +2,14 @@
 #define _DERP_H_
 
 #include <glib.h>
+#include "typealiases.h"
 #include "oo.h"
 #include "plugin.h"
 #include "triple.h"
 #include "rule.h"
 #include "assertion.h"
 #include "retraction.h"
-
-// Typedefs for code readability
-typedef GSList GSList_String;
+#include "action.h"
 
 // Derp types
 typedef enum {
@@ -36,7 +35,6 @@ gboolean derp_assert_fact(gchar* fact);
 gboolean derp_assert_generic(gchar* input);
 gboolean derp_assert_triple(gchar* subject, gchar* predicate, gchar* object);
 gboolean derp_assert_rule(struct DerpRule* rule);
-gboolean derp_add_callback(struct DerpPlugin* callee, gchar* name, GSList_DerpTriple* head);
 int derp_get_facts_size();
 GSList_String* derp_get_facts();
 GSList_String* derp_get_rules();

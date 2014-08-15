@@ -7,6 +7,7 @@
 #include "rule.h"
 #include "assertion.h"
 #include "retraction.h"
+#include "action.h"
 #include "derp.h"
 
 static void* DerpRule_ctor(void* _self, va_list* app) {
@@ -21,6 +22,18 @@ static void* DerpRule_ctor(void* _self, va_list* app) {
 	DerpRule_BodyList* body = va_arg(*app, GSList*);
 	self->body = body;
 	assert(self->body);
+
+	struct Object* o;
+	struct Class* c;
+	// Examine body list items, if it is an action, set its rule to self
+	for (DerpRule_BodyList* h = self->body; h; h = h->next) {
+		o = (struct Object*)h->data;
+		c = (struct Class*)o->class;
+		if (c == DerpAction) {
+			struct DerpAction* action = (struct DerpAction*)o;
+			action->rule = self;
+		}
+	}
 
 	return self;
 }
@@ -114,7 +127,7 @@ static bool is_valid_head_item(void* item) {
 
 static bool is_valid_body_item(void* item) {
 	const struct Class* class = ((struct Object*)item)->class;
-	bool result = class == DerpAssertion || class == DerpRetraction;
+	bool result = class == DerpAssertion || class == DerpRetraction || class == DerpAction;
 	if (!result) {
 		struct Object* o = (struct Object*)item;
 		struct Class* c = (struct Class*)o->class;
