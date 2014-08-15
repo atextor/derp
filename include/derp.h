@@ -23,7 +23,7 @@ typedef enum {
 // Plugin Descriptor is not a class
 struct _DerpPluginDescriptor {
 	gchar* name;
-	void (*start_plugin)(void);
+	void (*start_plugin)(struct DerpPlugin* self);
 	void (*shutdown_plugin)(void);
 	void (*callback)(gchar* rule, GHashTable* arguments);
 };

@@ -6,7 +6,7 @@
 
 static DerpPluginDescriptor plugin;
 
-void start_plugin() {
+void start_plugin(struct DerpPlugin* self) {
 	// Add rule
 	ADD_RULE("foo",
 		IF( T("dc:NLM", "dc:modified", "\"2008-01-14\"") ),

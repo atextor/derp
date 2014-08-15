@@ -421,7 +421,7 @@ int main() {
 	for (GList* node = plugin_list; node; node = node->next) {
 		p = (struct DerpPlugin*)node->data;
 		derp_log(DERP_LOG_DEBUG, "Starting plugin: %s", p->name);
-		p->start_plugin();
+		p->start_plugin(p);
 	}
 	g_list_free(plugin_list);
 

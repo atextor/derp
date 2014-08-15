@@ -68,7 +68,7 @@ static void handle_triple(void* user_data, raptor_statement* triple) {
 	g_string_free(o, TRUE);
 }
 
-void start_plugin() {
+void start_plugin(struct DerpPlugin* self) {
 	prefix_map = g_hash_table_new_full(
 			g_str_hash,    // hash function
 			g_str_equal,   // comparator
