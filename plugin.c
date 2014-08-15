@@ -58,13 +58,23 @@ static void* DerpPlugin_dtor(void* _self) {
 	return self;
 }
 
+static char* DerpPlugin_tostring(void* _self) {
+	struct DerpPlugin* self = _self;
+	GString* str = g_string_new(NULL);
+	g_string_append_printf(str, "DerpPlugin(%p, name=%s, file_name=%s)", self, self->name, self->file_name);
+	char* string = g_string_free(str, FALSE);
+	assert(string);
+	return string;
+}
+
 static const struct Class _DerpPlugin = {
 	.size = sizeof(struct DerpPlugin),
 	.name = "DerpPlugin",
 	.ctor = DerpPlugin_ctor,
 	.dtor = DerpPlugin_dtor,
 	.clone = NULL,
-	.equals = NULL
+	.equals = NULL,
+	.tostring = DerpPlugin_tostring
 };
 
 const void* DerpPlugin = &_DerpPlugin;
