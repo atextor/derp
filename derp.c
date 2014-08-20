@@ -160,33 +160,6 @@ EXPORT gboolean derp_assert_rule(struct DerpRule* rule) {
 	return result;
 }
 
-EXPORT GSList_DerpTriple* derp_new_triple_list(struct DerpTriple* triple, ...) {
-	GSList_DerpTriple* list = NULL;
-	GSList_DerpTriple* listptr = NULL;
-	list = g_slist_append(list, triple);
-	listptr = list;
-
-	va_list ap;
-	va_start(ap, triple);
-	struct DerpTriple* t = NULL;
-	while(TRUE) {
-		t = va_arg(ap, struct DerpTriple*);
-		if (t == NULL) {
-			break;
-		}
-		listptr = g_slist_append(listptr, t);
-	};
-	va_end(ap);
-	return list;
-}
-
-EXPORT void derp_delete_triple_list(GSList_DerpTriple* list) {
-	for (GSList* node = list; node; node = node->next) {
-		delete(node);
-	}
-	g_slist_free(list);
-}
-
 static void router_buffer_clear() {
 	memset(router_buffer, 0, ROUTER_BUFFER_SIZE);
 	router_buffer_filled = 0;

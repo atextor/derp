@@ -39,8 +39,6 @@ int derp_get_facts_size();
 GSList_String* derp_get_facts();
 GSList_String* derp_get_rules();
 GSList_String* derp_get_rule_definition(gchar* rulename);
-GSList_DerpTriple* derp_new_triple_list(struct DerpTriple* triple, ...);
-void derp_delete_triple_list(GSList_DerpTriple* list);
 void derp_log(derp_log_level level, char* fmt, ...);
 
 
