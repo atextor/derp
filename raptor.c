@@ -36,20 +36,53 @@ static GString* uri_to_qname(gchar* uri) {
 	return qname;
 }
 
+static GString* sanitize_uri(GString* input) {
+	GString* result = g_string_sized_new(input->len);
+	gchar* str = input->str;
+	char c;
+	while (*str) {
+		c = *str == '(' || *str == ')' ? '_' : *str;
+		g_string_append_c(result, c);
+		str++;
+	}
+
+	g_string_free(input, TRUE);
+	return result;
+}
+
+static GString* sanitize_literal(gchar* input) {
+	GString* result = g_string_sized_new(strlen(input));
+	g_string_append_c(result, '"');
+	while(*input) {
+		if (*input == '\\') {
+			g_string_append_c(result, ' ');
+			input++;
+		} else {
+			g_string_append_c(result, *input);
+		}
+		input++;
+	}
+	g_string_append_c(result, '"');
+
+	return result;
+}
+
 static GString* term_to_readable(raptor_term* term) {
 	GString* readable;
 	switch (term->type) {
 		case RAPTOR_TERM_TYPE_URI:
-			readable = uri_to_qname((char*)raptor_uri_as_string(term->value.uri));
+			readable = sanitize_uri(uri_to_qname((gchar*)raptor_uri_as_string(term->value.uri)));
 			break;
 		case RAPTOR_TERM_TYPE_LITERAL:
-			readable = g_string_sized_new(256);
-			g_string_append_printf(readable, "\"%s\"", (char*)(term->value.literal.string));
+			readable = sanitize_literal((gchar*)(term->value.literal.string));
 			break;
-		case RAPTOR_TERM_TYPE_BLANK:
+		case RAPTOR_TERM_TYPE_BLANK: {
+			unsigned char* t = raptor_term_to_string(term);
 			readable = g_string_sized_new(256);
-			g_string_append_printf(readable, "%s", (char*)raptor_term_to_string(term));
+			g_string_append_printf(readable, "%s", t);
+			free(t);
 			break;
+									 }
 		default:
 			derp_log(DERP_LOG_WARNING, "Unknown thing in RDF term: %s", (char*)raptor_term_to_string(term));
 			break;
@@ -92,6 +125,7 @@ void start_plugin(struct DerpPlugin* self) {
 	uri_string = raptor_uri_filename_to_uri_string("dcterms.rdf");
 	uri = raptor_new_uri(world, uri_string);
 	base_uri = raptor_uri_copy(uri);
+	derp_log(DERP_LOG_INFO, "Loading RDF from %s", uri_string);
 	raptor_parser_parse_file(rdf_parser, uri, base_uri);
 
 	raptor_free_parser(rdf_parser);
