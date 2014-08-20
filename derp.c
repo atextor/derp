@@ -19,8 +19,7 @@ void* symbols[BUFSIZE];
 
 #define ROUTER_NAME "derp_router"
 #define ROUTER_BUFFER_SIZE 1024
-static char router_buffer[ROUTER_BUFFER_SIZE];
-static int router_buffer_filled = 0;
+static GString* router_buffer = NULL;
 static void router_buffer_clear();
 static void *theEnv = NULL;
 
@@ -111,10 +110,8 @@ EXPORT GSList_String* derp_get_facts() {
 		fact_pointer = GetMFValue(multi_field_ptr, i);
 		router_buffer_clear();
 		PPFact(fact_pointer, ROUTER_NAME, 0);
-		int len = strlen(router_buffer);
-		char* fact_string = malloc(len + 1);
-		assert(fact_string != NULL);
-		strncpy(fact_string, router_buffer, len + 1);
+		gchar* fact_string = g_string_free(router_buffer, FALSE);
+		router_buffer = NULL;
 		pointer = g_slist_append(pointer, fact_string);
 		if (list == NULL) {
 			list = pointer;
@@ -161,8 +158,11 @@ EXPORT gboolean derp_assert_rule(struct DerpRule* rule) {
 }
 
 static void router_buffer_clear() {
-	memset(router_buffer, 0, ROUTER_BUFFER_SIZE);
-	router_buffer_filled = 0;
+	if (router_buffer != NULL) {
+		g_string_free(router_buffer, TRUE);
+	}
+	router_buffer = g_string_new(NULL);
+	assert(router_buffer);
 }
 
 int router_query_function(char* logical_name) {
@@ -170,9 +170,7 @@ int router_query_function(char* logical_name) {
 }
 
 int router_print_function(char* logical_name, char* str) {
-	int len = strlen(str);
-	snprintf(router_buffer + router_buffer_filled, ROUTER_BUFFER_SIZE - len - 1, "%s", str);
-	router_buffer_filled += len;
+	g_string_append(router_buffer, str);
 	return 1;
 }
 
@@ -185,6 +183,9 @@ int router_ungetc_function(int ch, char* logical_name) {
 }
 
 int router_exit_function(int exit_code) {
+	if (router_buffer != NULL) {
+		g_string_free(router_buffer, TRUE);
+	}
 	return 0;
 }
 
