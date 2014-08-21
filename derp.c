@@ -18,7 +18,6 @@
 void* symbols[BUFSIZE];
 
 #define ROUTER_NAME "derp_router"
-#define ROUTER_BUFFER_SIZE 1024
 static GString* router_buffer = NULL;
 static void router_buffer_clear();
 static void *theEnv = NULL;
