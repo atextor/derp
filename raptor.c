@@ -6,6 +6,8 @@
 #include "derp.h"
 
 static GHashTable* prefix_map;
+static raptor_world* world = NULL;
+static raptor_parser* rdf_parser = NULL;
 
 // For an URI such as http://foo.bar/baz returns the qname, if the prefix is
 // known, for example bar:baz. If the prefix is unknown, the result is the RDF
@@ -121,6 +123,21 @@ static void handle_namespace(void* user_data, raptor_namespace* nspace) {
 	}
 }
 
+static void parse_file(char* file) {
+	raptor_uri* uri;
+	raptor_uri* base_uri;
+	unsigned char* uri_string;
+
+	uri_string = raptor_uri_filename_to_uri_string(file);
+	uri = raptor_new_uri(world, uri_string);
+	base_uri = raptor_uri_copy(uri);
+	derp_log(DERP_LOG_INFO, "Loading RDF from %s", uri_string);
+	raptor_parser_parse_file(rdf_parser, uri, base_uri);
+	raptor_free_uri(base_uri);
+	raptor_free_uri(uri);
+	raptor_free_memory(uri_string);
+}
+
 void start_plugin(struct DerpPlugin* self) {
 	prefix_map = g_hash_table_new_full(
 			g_str_hash,    // hash function
@@ -128,33 +145,21 @@ void start_plugin(struct DerpPlugin* self) {
 			free,          // key destructor
 			free);         // val destructor
 
-	// Load rdf file
-	raptor_world* world = NULL;
-	raptor_parser* rdf_parser = NULL;
-	unsigned char* uri_string;
-	raptor_uri* uri;
-	raptor_uri* base_uri;
-
+	// Setup raptor environment
 	world = raptor_new_world();
 	rdf_parser = raptor_new_parser(world, "rdfxml");
 	raptor_parser_set_namespace_handler(rdf_parser, NULL, handle_namespace);
 	raptor_parser_set_statement_handler(rdf_parser, NULL, handle_triple);
-	uri_string = raptor_uri_filename_to_uri_string("dcterms.rdf");
-	uri = raptor_new_uri(world, uri_string);
-	base_uri = raptor_uri_copy(uri);
-	derp_log(DERP_LOG_INFO, "Loading RDF from %s", uri_string);
-	raptor_parser_parse_file(rdf_parser, uri, base_uri);
 
-	raptor_free_parser(rdf_parser);
-	raptor_free_uri(base_uri);
-	raptor_free_uri(uri);
-	raptor_free_memory(uri_string);
-	raptor_free_world(world);
+	// Load rdf file
+	parse_file("dcterms.rdf");
 
 	derp_log(DERP_LOG_INFO, "%d facts loaded", derp_get_facts_size());
 }
 
 void shutdown_plugin() {
+	raptor_free_parser(rdf_parser);
+	raptor_free_world(world);
 	g_hash_table_destroy(prefix_map);
 }
 
