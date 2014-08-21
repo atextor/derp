@@ -60,7 +60,7 @@ GHashTable* load_plugins(GSList_String* plugins) {
 	for (GSList_String* node = plugins; node; node = node->next) {
 		plugin_filename = (gchar*)node->data;
 		plugin = new(DerpPlugin, plugin_filename);
-		if (plugin != NULL) {
+		if (plugin) {
 			g_hash_table_insert(result, plugin->name, plugin);
 		}
 	}
@@ -113,7 +113,7 @@ EXPORT GSList_String* derp_get_facts() {
 		gchar* fact_string = g_string_free(router_buffer, FALSE);
 		router_buffer = NULL;
 		pointer = g_slist_append(pointer, fact_string);
-		if (list == NULL) {
+		if (!list) {
 			list = pointer;
 		}
 	}
@@ -158,7 +158,7 @@ EXPORT gboolean derp_assert_rule(struct DerpRule* rule) {
 }
 
 static void router_buffer_clear() {
-	if (router_buffer != NULL) {
+	if (router_buffer) {
 		g_string_free(router_buffer, TRUE);
 	}
 	router_buffer = g_string_new(NULL);
@@ -183,7 +183,7 @@ int router_ungetc_function(int ch, char* logical_name) {
 }
 
 int router_exit_function(int exit_code) {
-	if (router_buffer != NULL) {
+	if (router_buffer) {
 		g_string_free(router_buffer, TRUE);
 	}
 	return 0;
@@ -191,13 +191,13 @@ int router_exit_function(int exit_code) {
 
 void shutdown() {
 	// Shut down plugins
-	if (plugins != NULL) {
+	if (plugins) {
 		struct DerpPlugin* p;
 		GList* plugin_list = g_hash_table_get_values(plugins);
 		for (GList* node = plugin_list; node; node = node->next) {
 			p = (struct DerpPlugin*)node->data;
 			derp_log(DERP_LOG_DEBUG, "Stopping plugin: %s", p->name);
-			if (p->shutdown_plugin != NULL) {
+			if (p->shutdown_plugin) {
 				p->shutdown_plugin();
 			}
 
@@ -209,7 +209,7 @@ void shutdown() {
 	}
 
 	// Shut down CLIPS environment
-	if (theEnv != NULL) {
+	if (theEnv) {
 		DestroyEnvironment(theEnv);
 	}
 }
@@ -258,12 +258,12 @@ int* rule_callback(void* arg) {
 	char* rule_name = RtnLexeme(2);
 
 	struct DerpPlugin* p = g_hash_table_lookup(plugins, plugin_name);
-	if (p == NULL) {
+	if (!p) {
 		derp_log(DERP_LOG_ERROR, "Can't callback plugin %s: Unknown plugin", plugin_name);
 		return NULL;
 	}
 
-	if (p->callback == NULL) {
+	if (!p->callback) {
 		derp_log(DERP_LOG_ERROR, "Can't callback plugin %s: No callback function", plugin_name);
 		return NULL;
 	}

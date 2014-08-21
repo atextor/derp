@@ -11,27 +11,38 @@ static GHashTable* prefix_map;
 // known, for example bar:baz. If the prefix is unknown, the result is the RDF
 // form of the URI, e.g. <http://foo.bar/baz>.
 static GString* uri_to_qname(gchar* uri) {
+	// Special case: URI is a prefix string
+	gchar* prefix = g_hash_table_lookup(prefix_map, uri);
+	if (prefix) {
+		return g_string_new(prefix);
+	}
+
 	GString* qname = g_string_sized_new(128);
 	gchar* separator = rindex(uri, '#');
-	if (separator == NULL) {
+	if (!separator) {
 		separator = rindex(uri, '/');
 	}
-	if (separator == NULL) {
+	if (!separator) {
+		// No # or / in the URI, use as is
 		g_string_append_printf(qname, "<%s>", uri);
 		return qname;
 	}
 
-	GString* base_uri = g_string_sized_new(separator - uri);
-	g_string_append_printf(base_uri, "%.*s", (int)(separator - uri), uri);
-	gchar* prefix = g_hash_table_lookup(prefix_map, base_uri->str);
-	g_string_free(base_uri, TRUE);
+	GString* base_uri = NULL;
+	base_uri = g_string_sized_new(separator - uri);
+	g_string_append_printf(base_uri, "%.*s", (int)(separator - uri) + 1, uri);
+	prefix = g_hash_table_lookup(prefix_map, base_uri->str);
 
-	gchar* suffix = separator + 1;
-	if (prefix != NULL && strlen(suffix) > 0) {
-		g_string_append_printf(qname, "%s:%s", prefix, suffix);
-	} else {
+	if (!prefix) {
+		//derp_log(DERP_LOG_DEBUG, "Namespace unknown: %s", base_uri->str);
+		// There is a separator in the URI, but the prefix is unknown. Use URI as is.
+		g_string_free(base_uri, TRUE);
 		g_string_append_printf(qname, "<%s>", uri);
+		return qname;
 	}
+
+	g_string_free(base_uri, TRUE);
+	g_string_append_printf(qname, "%s:%s", prefix, separator + 1);
 
 	return qname;
 }
@@ -101,16 +112,21 @@ static void handle_triple(void* user_data, raptor_statement* triple) {
 	g_string_free(o, TRUE);
 }
 
+static void handle_namespace(void* user_data, raptor_namespace* nspace) {
+	char* prefix = (char*)raptor_namespace_get_prefix(nspace);
+	raptor_uri* uri = raptor_namespace_get_uri(nspace);
+	char* uristr = (char*)raptor_uri_as_string(uri);
+	if(!strncmp(uristr, "http://", 7) && prefix) {
+		g_hash_table_insert(prefix_map, strdup(uristr), strdup(prefix));
+	}
+}
+
 void start_plugin(struct DerpPlugin* self) {
 	prefix_map = g_hash_table_new_full(
 			g_str_hash,    // hash function
 			g_str_equal,   // comparator
 			free,          // key destructor
 			free);         // val destructor
-
-	// Fill prefix map
-	g_hash_table_insert(prefix_map, strdup("http://purl.org/dc/terms"), strdup("dc"));
-	g_hash_table_insert(prefix_map, strdup("http://www.w3.org/2000/01/rdf-schema"), strdup("rdfs"));
 
 	// Load rdf file
 	raptor_world* world = NULL;
@@ -121,6 +137,7 @@ void start_plugin(struct DerpPlugin* self) {
 
 	world = raptor_new_world();
 	rdf_parser = raptor_new_parser(world, "rdfxml");
+	raptor_parser_set_namespace_handler(rdf_parser, NULL, handle_namespace);
 	raptor_parser_set_statement_handler(rdf_parser, NULL, handle_triple);
 	uri_string = raptor_uri_filename_to_uri_string("dcterms.rdf");
 	uri = raptor_new_uri(world, uri_string);

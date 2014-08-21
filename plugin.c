@@ -26,13 +26,13 @@ static void* DerpPlugin_ctor(void* _self, va_list* app) {
 
 	derp_init_plugin = (DerpPluginDescriptor*(*)(void))dlsym(handle, "derp_init_plugin");
 	error = dlerror();
-	if (error != NULL) {
+	if (error) {
 		derp_log(DERP_LOG_ERROR, "Error while loading plugin %s: %s", file_name, error);
 		return NULL;
 	}
 
 	plugin_descriptor = derp_init_plugin();
-	if (plugin_descriptor == NULL) {
+	if (!plugin_descriptor) {
 		derp_log(DERP_LOG_ERROR, "Error while loading plugin %s: Invalid plugin struct", file_name);
 	}
 

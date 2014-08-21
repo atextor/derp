@@ -149,7 +149,7 @@ static GSList* build_item_list(void* item, va_list ap, bool (*validator)(void*))
 
 	while(TRUE) {
 		void* o = va_arg(ap, void*);
-		if (o == NULL) {
+		if (!o) {
 			break;
 		}
 
