@@ -151,10 +151,11 @@ void start_plugin(struct DerpPlugin* self) {
 	raptor_parser_set_namespace_handler(rdf_parser, NULL, handle_namespace);
 	raptor_parser_set_statement_handler(rdf_parser, NULL, handle_triple);
 
-	// Load rdf file
-	parse_file("dcterms.rdf");
+	// Whenever a raptor_load_file triple is encountered, load the file
+	ADD_RULE("plugin:raptor:load",
+		IF ( T("derp:raptor", "derp:raptor_load_file", "?file") ),
+		THEN ( CALLBACK(self, "?file" )) );
 
-	derp_log(DERP_LOG_INFO, "%d facts loaded", derp_get_facts_size());
 }
 
 void shutdown_plugin() {
@@ -163,11 +164,21 @@ void shutdown_plugin() {
 	g_hash_table_destroy(prefix_map);
 }
 
+void callback(gchar* rule, GHashTable* arguments) {
+	if (!g_strcmp0(rule, "plugin:raptor:load")) {
+		char* file = (char*)g_hash_table_lookup(arguments, "file");
+		if (file) {
+			parse_file(file);
+			derp_log(DERP_LOG_INFO, "%d facts loaded", derp_get_facts_size());
+		}
+	}
+}
+
 static DerpPluginDescriptor plugin = {
 	"Raptor",
 	start_plugin,
 	shutdown_plugin,
-	NULL
+	callback
 };
 
 DerpPluginDescriptor* derp_init_plugin(void) {

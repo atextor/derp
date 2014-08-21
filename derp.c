@@ -358,6 +358,9 @@ int main() {
 	}
 	g_list_free(plugin_list);
 
+	// Advise raptor plugin to load rdf file
+	derp_assert_triple("derp:raptor", "derp:raptor_load_file", "dcterms.rdf");
+
 	// Enter main program
 	derp_log(DERP_LOG_DEBUG, "Initialized");
 
