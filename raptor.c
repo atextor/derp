@@ -9,6 +9,8 @@ static GHashTable* prefix_map;
 static raptor_world* world = NULL;
 static raptor_parser* rdf_parser = NULL;
 
+static gchar* attribute_load_file = NULL;
+
 // For an URI such as http://foo.bar/baz returns the qname, if the prefix is
 // known, for example bar:baz. If the prefix is unknown, the result is the RDF
 // form of the URI, e.g. <http://foo.bar/baz>.
@@ -152,25 +154,30 @@ void start_plugin(struct DerpPlugin* self) {
 	raptor_parser_set_statement_handler(rdf_parser, NULL, handle_triple);
 
 	// Whenever a raptor_load_file triple is encountered, load the file
-	GString* load_file_attribute = g_string_new(NULL);
-	g_string_append_printf(load_file_attribute, "%s_load_file", self->identifier);
-	gchar* attr = g_string_free(load_file_attribute, FALSE);
+	GString* attr_str = g_string_new(NULL);
+	g_string_append_printf(attr_str, "%s_load_file", self->identifier);
+	attribute_load_file = g_string_free(attr_str, FALSE);
 
-	ADD_RULE("plugin:raptor:load",
-		IF ( T(self->identifier, attr, "?file") ),
+	ADD_RULE(attribute_load_file,
+		IF ( T(self->identifier, attribute_load_file, "?file") ),
 		THEN ( CALLBACK(self, "?file" )) );
 
-	free(attr);
+	// Register configurable attributes
+	derp_assert_triple(self->identifier, "derp:reads", attribute_load_file);
+	derp_assert_triple(attribute_load_file, "rdfs:range", "rdfs:Literal");
+	derp_assert_triple(attribute_load_file, "rdfs:label", "load file");
+	derp_assert_triple(attribute_load_file, "rdfs:comment", "Path to an RDF file to load");
 }
 
 void shutdown_plugin() {
 	raptor_free_parser(rdf_parser);
 	raptor_free_world(world);
 	g_hash_table_destroy(prefix_map);
+	g_free(attribute_load_file);
 }
 
 void callback(gchar* rule, GHashTable* arguments) {
-	if (!g_strcmp0(rule, "plugin:raptor:load")) {
+	if (!g_strcmp0(rule, attribute_load_file)) {
 		char* file = (char*)g_hash_table_lookup(arguments, "file");
 		if (file) {
 			parse_file(file);
