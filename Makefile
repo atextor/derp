@@ -1,7 +1,7 @@
 PROG=derp
 MODS=derp.o oo.o plugin.o triple.o rule.o assertion.o retraction.o action.o
 CLIPSDIR=clips
-CFLAGS=-Wall -c -std=c99 -D_POSIX_C_SOURCE -D_GNU_SOURCE -fpic -g -Iinclude -I$(CLIPSDIR) -DLINUX `pkg-config --cflags glib-2.0`
+CFLAGS=-Wall -c -std=c99 -D_POSIX_C_SOURCE -D_GNU_SOURCE -fpic -g -Iinclude -I$(CLIPSDIR) `pkg-config --cflags glib-2.0`
 LFLAGS=-rdynamic -L$(CLIPSDIR) -lpthread -lclips -lm -ldl `pkg-config --libs glib-2.0`
 CLIPSLIB=$(CLIPSDIR)/libclips.a
 
