@@ -95,7 +95,7 @@ static GString* term_to_readable(raptor_term* term) {
 			g_string_append_printf(readable, "%s", t);
 			free(t);
 			break;
-									 }
+		}
 		default:
 			derp_log(DERP_LOG_WARNING, "Unknown thing in RDF term: %s", (char*)raptor_term_to_string(term));
 			break;
@@ -152,10 +152,15 @@ void start_plugin(struct DerpPlugin* self) {
 	raptor_parser_set_statement_handler(rdf_parser, NULL, handle_triple);
 
 	// Whenever a raptor_load_file triple is encountered, load the file
+	GString* load_file_attribute = g_string_new(NULL);
+	g_string_append_printf(load_file_attribute, "%s_load_file", self->identifier);
+	gchar* attr = g_string_free(load_file_attribute, FALSE);
+
 	ADD_RULE("plugin:raptor:load",
-		IF ( T("derp:raptor", "derp:raptor_load_file", "?file") ),
+		IF ( T(self->identifier, attr, "?file") ),
 		THEN ( CALLBACK(self, "?file" )) );
 
+	free(attr);
 }
 
 void shutdown_plugin() {

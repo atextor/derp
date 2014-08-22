@@ -10,6 +10,7 @@ struct DerpPlugin {
 	const struct Object _;
 	gchar* name;
 	gchar* file_name;
+	gchar* identifier;
 	void (*start_plugin)(struct DerpPlugin* self);
 	void (*shutdown_plugin)(void);
 	void (*callback)(gchar* rule, GHashTable* arguments);

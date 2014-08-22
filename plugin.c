@@ -2,6 +2,8 @@
 #include <string.h>
 #include <dlfcn.h>
 #include <assert.h>
+#include <glib.h>
+#include <glib/gprintf.h>
 
 #include "derp.h"
 #include "plugin.h"
@@ -48,6 +50,14 @@ static void* DerpPlugin_ctor(void* _self, va_list* app) {
 	self->shutdown_plugin = plugin_descriptor->shutdown_plugin;
 	self->callback = plugin_descriptor->callback;
 
+	// Build plugin identifier
+	// TODO: Prevent identifier clashes if two plugins have the same name
+	GString* id = g_string_sized_new(strlen(name) + 5);
+	gchar* lcase_name = g_ascii_strdown(name, -1);
+	g_string_append_printf(id, "derp:%s", lcase_name);
+	free(lcase_name);
+	self->identifier = g_string_free(id, FALSE);
+
 	return self;
 }
 
@@ -55,6 +65,7 @@ static void* DerpPlugin_dtor(void* _self) {
 	struct DerpPlugin* self = _self;
 	free(self->name);
 	free(self->file_name);
+	free(self->identifier);
 	return self;
 }
 
