@@ -5,7 +5,7 @@ CFLAGS=-Wall -c -std=c99 -D_POSIX_C_SOURCE -D_GNU_SOURCE -fpic -g -Iinclude -I$(
 LFLAGS=-rdynamic -L$(CLIPSDIR) -lpthread -lclips -lm -ldl `pkg-config --libs glib-2.0`
 CLIPSLIB=$(CLIPSDIR)/libclips.a
 
-all: $(PROG) libplugin1.so libraptor.so
+all: $(PROG) libplugin1.so libraptor.so librunexternal.so
 
 $(CLIPSLIB):
 	cd $(CLIPSDIR); make
@@ -22,6 +22,8 @@ raptor.o: raptor.c
 libraptor.so: raptor.o
 	gcc -shared -g -o libraptor.so raptor.o `pkg-config raptor2 --libs`
 
+librunexternal.so: runexternal.o
+	gcc -shared -g -o librunexternal.so runexternal.o
 
 $(PROG).o: $(PROG).c
 	gcc $(CFLAGS) -fvisibility=hidden -o $@ $<

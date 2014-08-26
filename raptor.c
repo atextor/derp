@@ -165,8 +165,8 @@ void start_plugin(struct DerpPlugin* self) {
 	// Register configurable attributes
 	derp_assert_triple(self->identifier, "derp:reads", attribute_load_file);
 	derp_assert_triple(attribute_load_file, "rdfs:range", "rdfs:Literal");
-	derp_assert_triple(attribute_load_file, "rdfs:label", "load file");
-	derp_assert_triple(attribute_load_file, "rdfs:comment", "Path to an RDF file to load");
+	derp_assert_triple(attribute_load_file, "rdfs:label", "\"load file\"");
+	derp_assert_triple(attribute_load_file, "rdfs:comment", "\"Path to an RDF file to load\"");
 }
 
 void shutdown_plugin() {

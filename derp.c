@@ -76,7 +76,7 @@ EXPORT gboolean derp_assert_fact(gchar* fact) {
 }
 
 EXPORT gboolean derp_assert_triple(gchar* subject, gchar* predicate, gchar* object) {
-	GString* fact = g_string_sized_new(100);
+	GString* fact = g_string_new(NULL);
 	g_string_append_printf(fact, "(triple %s %s %s)", subject, predicate, object);
 	int result = derp_assert_fact(fact->str);
 	g_string_free(fact, TRUE);
@@ -150,6 +150,7 @@ EXPORT GSList_String* derp_get_rule_definition(gchar* rulename) {
 
 EXPORT gboolean derp_assert_rule(struct DerpRule* rule) {
 	gchar* str = ((struct Class*)DerpRule)->tostring(rule);
+	printf("Asserting rule: %s\n", str);
 	int result = derp_assert_generic(str);
 	free(str);
 	delete(rule);
@@ -346,6 +347,7 @@ int main() {
 	GSList_String* list = NULL;
 	list = g_slist_append(list, "./libplugin1.so");
 	list = g_slist_append(list, "./libraptor.so");
+	list = g_slist_append(list, "./librunexternal.so");
 	plugins = load_plugins(list);
 	g_slist_free(list);
 
@@ -359,7 +361,10 @@ int main() {
 	g_list_free(plugin_list);
 
 	// Advise raptor plugin to load rdf file
-	derp_assert_triple("derp:raptor", "derp:raptor_load_file", "dcterms.rdf");
+	derp_assert_triple("derp:raptor", "derp:raptor_load_file", "\"dcterms.rdf\"");
+
+	// Test runexternal plugin
+	derp_assert_triple("derp:runexternal", "derp:runexternal_command", "\"/bin/ls .\"");
 
 	// Enter main program
 	derp_log(DERP_LOG_DEBUG, "Initialized");
@@ -367,8 +372,8 @@ int main() {
 	// Run rule engine
 	derp_assert_generic("(run)");
 
-	/*
 	// List facts
+	/*
 	GSList_String* facts = derp_get_facts();
 	for (GSList_String* node = facts; node; node = node->next) {
 		printf("fact %s", (char*)node->data);
