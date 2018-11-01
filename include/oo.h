@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdarg.h>
+#include <stddef.h>
 
 struct Class {
 	size_t size;
