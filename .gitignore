@@ -6,3 +6,6 @@ clips/clips
 .*.swp
 tags
 TAGS
+bin
+Makefile
+build
