@@ -9,7 +9,7 @@ set (PLUGIN_DIR "plugins")
 
 # Configure sources and libraries
 add_subdirectory ("${CLIPS_DIR}")
-file (GLOB DerpSources *.c)
+file (GLOB DerpSources src/*.c)
 include_directories ("${INCLUDE_DIR}" "${CLIPS_DIR}")
 find_package (PkgConfig REQUIRED)
 pkg_check_modules (GLIB2 REQUIRED glib-2.0)
