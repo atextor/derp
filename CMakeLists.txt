@@ -34,3 +34,6 @@ add_subdirectory ("${PLUGIN_DIR}/runexternal")
 
 # Resources
 configure_file ("dcterms.rdf" "${BIN_DIR}")
+
+# Tests
+add_subdirectory ("test")
