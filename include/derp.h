@@ -30,17 +30,6 @@ struct _DerpPluginDescriptor {
 typedef struct _DerpPluginDescriptor DerpPluginDescriptor;
 
 // Derp functions
-void derp_free_data(gpointer data);
-gboolean derp_assert_fact(gchar* fact);
-gboolean derp_assert_generic(gchar* input);
-gboolean derp_assert_triple(gchar* subject, gchar* predicate, gchar* object);
-gboolean derp_assert_rule(struct DerpRule* rule);
-int derp_get_facts_size();
-GSList_String* derp_get_facts();
-GSList_String* derp_get_rules();
-GSList_String* derp_get_rule_definition(gchar* rulename);
 void derp_log(derp_log_level level, char* fmt, ...);
 
-
 #endif
-

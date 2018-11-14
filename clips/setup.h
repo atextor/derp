@@ -377,7 +377,7 @@
 /*   API may be used to interface with CLIPS.            */
 /*********************************************************/
 
-#define ENVIRONMENT_API_ONLY 0
+#define ENVIRONMENT_API_ONLY 1
 
 /*************************************************************/
 /* ALLOW_ENVIRONMENT_GLOBALS: If enabled, tracks the current */
