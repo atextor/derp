@@ -29,6 +29,6 @@ DerpRule_BodyList* derp_new_body_list(void* item, ...);
 #define ASSERT(s,p,o) new(DerpAssertion,new(DerpTriple,s,p,o))
 #define RETRACT(s,p,o) new(DerpRetraction,new(DerpTriple,s,p,o))
 #define CALLBACK(callee,...) new(DerpAction,callee,__VA_ARGS__,NULL)
-#define ADD_RULE(name,head,body) derp_assert_rule(RULE(name,head,body))
+#define ADD_RULE(name,head,body) derp_assert_rule(context, RULE(name,head,body))
 
 #endif

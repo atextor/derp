@@ -33,8 +33,8 @@ int DerpKnowledgeBase_filter(ClipsEnvironment clips_environment) {
 	char msgbuf[100];
 
 	char* target = spo_selector == 's' ? s :
-		          (spo_selector == 'p' ? p :
-				  (spo_selector == 'o' ? o : NULL));
+		(spo_selector == 'p' ? p :
+		(spo_selector == 'o' ? o : NULL));
 	if (!target) {
 		return FALSE;
 	}
@@ -120,7 +120,7 @@ static void* DerpKnowledgeBase_ctor(void* _self, va_list* app) {
 	// 6 - argument restrictions (2*uss = two strings followed by any number of any arguments,
 	//     see page 22 of CLIPS Advanced Programming Guide)
 	EnvDefineFunction2(self->clips_environment, "rule_callback", 'v',
-					   PTIEF DerpKnowledgeBase_callback, "DerpKnowledgeBase_callback", "2*uss");
+						PTIEF DerpKnowledgeBase_callback, "DerpKnowledgeBase_callback", "2*uss");
 
 	// Register filter function.
 	// Arguments:
@@ -132,7 +132,7 @@ static void* DerpKnowledgeBase_ctor(void* _self, va_list* app) {
 	// 6 - argument restrictions (55uuuuss = three arguments of any type, followed by two strings,
 	//     followed by one argument of any type, see page 22 of CLIPS Advanced Programming Guide)
 	EnvDefineFunction2(self->clips_environment, "filter", 'b',
-					   PTIEF DerpKnowledgeBase_filter, "DerpKnowledgeBase_filter", "55uuuuss");
+						PTIEF DerpKnowledgeBase_filter, "DerpKnowledgeBase_filter", "55uuuuss");
 
 	// Add I/O routers
 	int result = EnvAddRouter(self->clips_environment,

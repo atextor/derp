@@ -7,6 +7,8 @@
 static DerpPluginDescriptor plugin;
 
 void start_plugin(struct DerpPlugin* self) {
+	struct DerpKnowledgeBase* context = derp_get_default_knowledgebase();
+
 	// Add rule
 	ADD_RULE("foo",
 		IF( T("dc:NLM", "dc:modified", "\"2008-01-14\"") ),
@@ -39,7 +41,7 @@ void start_plugin(struct DerpPlugin* self) {
 	*/
 
 	// List rules
-	GSList_String* rules = derp_get_rules();
+	GSList_String* rules = derp_get_rules(context);
 	for (GSList_String* node = rules; node; node = node->next) {
 		printf("Rule: %s\n", (char*)node->data);
 	}

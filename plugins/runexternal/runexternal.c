@@ -8,21 +8,26 @@
 static DerpPluginDescriptor plugin;
 static gchar* attribute_run_str = NULL;
 
+static struct DerpKnowledgeBase* context = NULL;
+
 void start_plugin(struct DerpPlugin* self) {
+	// Set context
+	context = derp_get_default_knowledgebase();
+
 	GString* run_str = g_string_new(NULL);
 	g_string_append_printf(run_str, "%s_command", self->identifier);
 	attribute_run_str = g_string_free(run_str, FALSE);
 
 	// Register configurable attributes
-	derp_assert_triple(self->identifier, "derp:reads", attribute_run_str);
-	derp_assert_triple(attribute_run_str, "rdfs:range", "rdfs:Literal");
-	derp_assert_triple(attribute_run_str, "rdfs:label", "\"run external command\"");
-	derp_assert_triple(attribute_run_str, "rdfs:comment", "\"An external command to execute\"");
+	derp_assert_triple(context, self->identifier, "derp:reads", attribute_run_str);
+	derp_assert_triple(context, attribute_run_str, "rdfs:range", "rdfs:Literal");
+	derp_assert_triple(context, attribute_run_str, "rdfs:label", "\"run external command\"");
+	derp_assert_triple(context, attribute_run_str, "rdfs:comment", "\"An external command to execute\"");
 
 	// Add rule
 	ADD_RULE(RULE_NAME,
 		IF ( T(self->identifier, attribute_run_str, "?cmd") ),
-		THEN ( CALLBACK(self, "?cmd" )) ); 
+		THEN ( CALLBACK(self, "?cmd" )) );
 }
 
 void shutdown_plugin() {
@@ -48,4 +53,3 @@ static DerpPluginDescriptor plugin = {
 DerpPluginDescriptor* derp_init_plugin(void) {
 	return &plugin;
 }
-

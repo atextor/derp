@@ -46,6 +46,10 @@ EXPORT void derp_log(derp_log_level level, char* fmt, ...) {
 	putchar('\n');
 }
 
+struct DerpKnowledgeBase* derp_get_default_knowledgebase() {
+	return knowledgebase;
+}
+
 GHashTable* load_plugins(GSList_String* plugins) {
 	GHashTable* result = g_hash_table_new(
 			g_str_hash,        // hash function

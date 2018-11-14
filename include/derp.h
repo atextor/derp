@@ -10,6 +10,7 @@
 #include "assertion.h"
 #include "retraction.h"
 #include "action.h"
+#include "knowledgebase.h"
 
 // Derp types
 typedef enum {
@@ -31,5 +32,6 @@ typedef struct _DerpPluginDescriptor DerpPluginDescriptor;
 
 // Derp functions
 void derp_log(derp_log_level level, char* fmt, ...);
+struct DerpKnowledgeBase* derp_get_default_knowledgebase();
 
 #endif

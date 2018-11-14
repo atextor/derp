@@ -11,6 +11,8 @@ static raptor_parser* rdf_parser = NULL;
 
 static gchar* attribute_load_file = NULL;
 
+static struct DerpKnowledgeBase* context = NULL;
+
 // For an URI such as http://foo.bar/baz returns the qname, if the prefix is
 // known, for example bar:baz. If the prefix is unknown, the result is the RDF
 // form of the URI, e.g. <http://foo.bar/baz>.
@@ -110,7 +112,7 @@ static void handle_triple(void* user_data, raptor_statement* triple) {
 	GString* s = term_to_readable(triple->subject);
 	GString* p = term_to_readable(triple->predicate);
 	GString* o = term_to_readable(triple->object);
-	derp_assert_triple(s->str, p->str, o->str);
+	derp_assert_triple(context, s->str, p->str, o->str);
 	g_string_free(s, TRUE);
 	g_string_free(p, TRUE);
 	g_string_free(o, TRUE);
@@ -147,6 +149,9 @@ void start_plugin(struct DerpPlugin* self) {
 			free,          // key destructor
 			free);         // val destructor
 
+	// Set context
+	context = derp_get_default_knowledgebase();
+
 	// Setup raptor environment
 	world = raptor_new_world();
 	rdf_parser = raptor_new_parser(world, "rdfxml");
@@ -163,10 +168,10 @@ void start_plugin(struct DerpPlugin* self) {
 		THEN ( CALLBACK(self, "?file" )) );
 
 	// Register configurable attributes
-	derp_assert_triple(self->identifier, "derp:reads", attribute_load_file);
-	derp_assert_triple(attribute_load_file, "rdfs:range", "rdfs:Literal");
-	derp_assert_triple(attribute_load_file, "rdfs:label", "\"load file\"");
-	derp_assert_triple(attribute_load_file, "rdfs:comment", "\"Path to an RDF file to load\"");
+	derp_assert_triple(context, self->identifier, "derp:reads", attribute_load_file);
+	derp_assert_triple(context, attribute_load_file, "rdfs:range", "rdfs:Literal");
+	derp_assert_triple(context, attribute_load_file, "rdfs:label", "\"load file\"");
+	derp_assert_triple(context, attribute_load_file, "rdfs:comment", "\"Path to an RDF file to load\"");
 }
 
 void shutdown_plugin() {
@@ -181,7 +186,7 @@ void callback(gchar* rule, GHashTable* arguments) {
 		char* file = (char*)g_hash_table_lookup(arguments, "file");
 		if (file) {
 			parse_file(file);
-			derp_log(DERP_LOG_INFO, "%d facts loaded", derp_get_facts_size());
+			derp_log(DERP_LOG_INFO, "%d facts loaded", derp_get_facts_size(context));
 		}
 	}
 }
