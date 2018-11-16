@@ -16,7 +16,7 @@ pkg_check_modules (GLIB2 REQUIRED glib-2.0)
 include_directories (${GLIB2_INCLUDE_DIRS})
 link_directories (${GLIB2_LIBRARY_DIRS} "${CLIPS_DIR}")
 add_definitions (${GLIB2_CFLAGS_OTHER})
-add_compile_options (-std=c99 -Wall -D_POSIX_C_SOURCE -D_GNU_SOURCE -fpic)
+add_compile_options (-std=c99 -Wall -Werror -D_POSIX_C_SOURCE -D_GNU_SOURCE -fpic)
 set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -rdynamic")
 
 # Target directory
