@@ -917,7 +917,7 @@ unsigned int GetAtomicHashValue(
       case INSTANCE_ADDRESS:
 #endif
       case EXTERNAL_ADDRESS:
-         tvalue = (unsigned int) value;
+         tvalue = (unsigned long) value;
          break;
 
       case STRING:

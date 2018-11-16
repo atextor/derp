@@ -729,7 +729,7 @@ globle unsigned ItemHashValue(
 #if OBJECT_SYSTEM
       case INSTANCE_ADDRESS:
 #endif
-        return(((unsigned) theValue) % theRange);
+        return(((unsigned long) theValue) % theRange);
      }
 
    SystemError(theEnv,"UTILITY",1);

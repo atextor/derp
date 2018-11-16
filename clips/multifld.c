@@ -648,7 +648,7 @@ unsigned HashMultifield(
 #if OBJECT_SYSTEM
           case INSTANCE_ADDRESS:
 #endif
-            count += (unsigned int) (((int) fieldPtr[i].value) * (i + 29));
+            count += (unsigned int) (((long) fieldPtr[i].value) * (i + 29));
             break;
 
           case SYMBOL:

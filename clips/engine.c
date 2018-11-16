@@ -465,7 +465,6 @@ globle long int EnvRun(
       PrintLongInteger(theEnv,WDIALOG,rulesFired);
       EnvPrintRouter(theEnv,WDIALOG," rules fired");
 
-#if (! GENERIC)
       if (startTime != endTime)
         {
          EnvPrintRouter(theEnv,WDIALOG,"        Run time is ");
@@ -476,7 +475,6 @@ globle long int EnvRun(
         }
       else
         { EnvPrintRouter(theEnv,WDIALOG,"\n"); }
-#endif
 
 #if DEFTEMPLATE_CONSTRUCT
       sprintf(printSpace,"%ld mean number of facts (%ld maximum).\n",
