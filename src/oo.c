@@ -1,7 +1,7 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
-#include <glib.h>
 #include "oo.h"
 #include "visibility.h"
 
@@ -29,9 +29,8 @@ static bool Object_equals(void* _self, void* _other) {
 static char* Object_tostring(void* _self) {
 	struct Object* self = _self;
 	struct Class* class = (struct Class*)self->class;
-	GString* str = g_string_new(NULL);
-	g_string_append_printf(str, "%s(%p)", class->name, self);
-	char* string = g_string_free(str, FALSE);
+	char* string = NULL;
+	asprintf(&string, "%s(%p)", class->name, self);
 	assert(string);
 	return string;
 }
