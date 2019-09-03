@@ -17,10 +17,11 @@ ExternalProject_Add(cunit
 # Configure sources and libraries
 file (GLOB TestSources *.c)
 include_directories (
-  "${CUNIT_DIR}/CUnit/Headers"
-  "${CUNIT_DIR}/CUnit/Headers/generated-headers"
+  "${CUNIT_DIR}/CUnit"
+  "${CUNIT_DIR}/CUnit/CUnit"
+  "${CUNIT_DIR}/CUnit/CUnit/generated-headers"
 )
-link_directories ("${CUNIT_DIR}/CUnit/Sources")
+link_directories ("${CUNIT_DIR}/CUnit")
 
 add_executable (testsuite ${TestSources})
 add_dependencies (testsuite cunit)
